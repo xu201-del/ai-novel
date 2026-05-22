@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNovelStore } from '@/stores/novel-store';
 import { useUIStore } from '@/stores/ui-store';
-import { fetchAIStream, fetchAI } from '@/services/api';
+import { fetchAIStream } from '@/services/api';
 import {
   buildChapterPrompt, buildContinuePrompt,
-  buildNextChapterPrompt, buildRewritePrompt, buildVotePrompt,
+  buildNextChapterPrompt, buildRewritePrompt,
 } from '@/services/prompts';
 import { GROWTH_STAGES, getStageForChapter } from '@/services/writing-framework';
 import { cn, formatWordCount } from '@/lib/utils';
@@ -17,6 +17,7 @@ import {
 import type { PipelineStage } from '@/types';
 import { PIPELINE_STAGES } from '@/types';
 import OutlineReview from './OutlineReview';
+import VoteDropdown from '@/components/ui/VoteDropdown';
 
 // ═══════════════════════════════════════════════════════════
 // Toolbar action types
@@ -151,7 +152,6 @@ export default function ChapterEditor() {
   const [activeAction, setActiveAction] = useState<ToolAction>(null);
   const [selectedText, setSelectedText] = useState('');
   const [floatingMenu, setFloatingMenu] = useState<{ top: number; left: number } | null>(null);
-  const [copied, setCopied] = useState(false);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -729,40 +729,6 @@ export default function ChapterEditor() {
     }
   }, [selectedText, localContent, currentChapter?.id, currentChapter?.title, apiConfig.key]);
 
-  // ─── Vote request ────────────────────────────────────────
-  const handleVoteRequest = useCallback(async () => {
-    if (!currentNovel || !currentChapter || !apiConfig.key) return;
-    setActiveAction('vote');
-    setGenerationError(null);
-
-    try {
-      const prompt = buildVotePrompt({
-        bookTitle: currentNovel.title,
-        recentContent: localContent,
-        chapterInfo: `第 ${currentIndex + 1}/${totalChapters} 章`,
-        type: '推荐票',
-      });
-
-      const text = await fetchAI({ prompt, apiConfig });
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-
-      addAICard({
-        type: 'vote-request',
-        title: '求票文案',
-        content: text,
-        sourceAction: '求票文案',
-        chapterId: currentChapter.id,
-      });
-
-      setTimeout(() => setCopied(false), 3000);
-    } catch (err: unknown) {
-      setGenerationError(err instanceof Error ? err.message : '求票文案生成失败');
-    } finally {
-      setActiveAction(null);
-    }
-  }, [currentNovel?.id, currentChapter?.id, apiConfig.key, localContent, currentIndex, totalChapters]);
-
   // ─── Stop generation ─────────────────────────────────────
   const handleStop = () => {
     abortRef.current?.abort();
@@ -815,12 +781,11 @@ export default function ChapterEditor() {
       <div className="flex items-center gap-1 px-3 py-2 border-b border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] shrink-0 overflow-x-auto">
         <ToolButton icon={Sparkles} label="AI 生成" desc="根据大纲生成当前章节" loading={activeAction === 'generate'} active={activeAction === 'generate'} disabled={isGenerating && activeAction !== 'generate'} onClick={handleGenerate} />
         <div className="w-px h-5 bg-[var(--color-border-primary)] mx-1" />
-        <ToolButton icon={ChevronRight} label="续写本章" desc="从当前正文末尾接续" loading={activeAction === 'continue'} active={activeAction === 'continue'} disabled={isGenerating && activeAction !== 'continue'} onClick={handleContinue} />
-        <ToolButton icon={Plus} label="下一章" desc="生成下一章内容" loading={activeAction === 'next-chapter'} active={activeAction === 'next-chapter'} disabled={isGenerating && activeAction !== 'next-chapter'} onClick={handleNextChapter} />
+        <GradientToolButton icon={ChevronRight} label="续写本章" desc="从当前正文末尾接续" loading={activeAction === 'continue'} disabled={isGenerating && activeAction !== 'continue'} onClick={handleContinue} />
+        <GradientToolButton icon={Plus} label="下一章" desc="生成下一章内容" loading={activeAction === 'next-chapter'} disabled={isGenerating && activeAction !== 'next-chapter'} onClick={handleNextChapter} />
         <div className="w-px h-5 bg-[var(--color-border-primary)] mx-1" />
         <ToolButton icon={Pen} label="改写选中" desc="选中文字后点击改写" active={!!selectedText} disabled={!selectedText || isGenerating} onClick={() => handleRewrite()} />
-        <ToolButton icon={Sparkles} label="求票文案" desc="生成求票文案并复制" loading={activeAction === 'vote'} active={activeAction === 'vote'} disabled={isGenerating && activeAction !== 'vote'} onClick={handleVoteRequest} />
-        {copied && <span className="text-[10px] text-[var(--color-green)] animate-fade-in ml-1">已复制</span>}
+        <VoteDropdown />
 
         <div className="flex-1" />
 
@@ -889,13 +854,12 @@ export default function ChapterEditor() {
             onKeyUp={handleSelectionChange}
             className={cn(
               'outline-none text-[var(--color-text-primary)] min-h-[60vh]',
-              'leading-loose tracking-wide',
+              'writer-prose',
               'prose-p:mb-6',
               isGenerating && activeAction === 'generate' ? 'opacity-50' : '',
               'cursor-text',
               '[&_p]:mb-6'
             )}
-            style={{ fontFamily: 'var(--font-sans)', fontSize: '15px', wordSpacing: '0.05em' }}
             dangerouslySetInnerHTML={{ __html: renderContentToHtml(localContent, aiSegments.length > 0 ? aiSegments : undefined) }}
           />
 
@@ -980,6 +944,34 @@ function ToolButton({ icon: Icon, label, desc, active, loading, disabled, onClic
       )}
     >
       {loading ? <Loader2 size={13} className="animate-spin" /> : <Icon size={13} strokeWidth={1.5} />}
+      {label}
+      <span className="invisible group-hover:visible absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)] text-[10px] text-[var(--color-text-secondary)] whitespace-nowrap rounded shadow-xl z-50 pointer-events-none">
+        {desc}
+      </span>
+    </button>
+  );
+}
+
+function GradientToolButton({ icon: Icon, label, desc, loading, disabled, onClick }: {
+  icon: typeof Sparkles;
+  label: string;
+  desc: string;
+  loading?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-[var(--radius-md)] transition-all duration-200 whitespace-nowrap',
+        'bg-gradient-to-r from-[var(--color-amber-start)] to-[var(--color-amber-end)] text-[#0b0b0f] font-semibold',
+        'shadow-[0_2px_8px_rgba(212,164,76,0.25)] hover:shadow-[0_4px_16px_rgba(212,164,76,0.4)] hover:-translate-y-0.5 active:translate-y-0',
+        disabled && 'opacity-30 cursor-not-allowed shadow-none transform-none'
+      )}
+    >
+      {loading ? <Loader2 size={13} className="animate-spin" /> : <Icon size={13} strokeWidth={2} />}
       {label}
       <span className="invisible group-hover:visible absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)] text-[10px] text-[var(--color-text-secondary)] whitespace-nowrap rounded shadow-xl z-50 pointer-events-none">
         {desc}
