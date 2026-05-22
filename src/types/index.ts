@@ -1,4 +1,4 @@
-import type { WriteMode, TROPE_TAGS } from '@/services/writing-framework';
+import type { WriteMode } from '@/services/writing-framework';
 
 export interface Protagonist {
   name: string;
@@ -96,6 +96,49 @@ export interface MemoryEntry {
   createdAt: number;
 }
 
+// ═══════════════════════════════════════════════════════════
+// Story Engine Pipeline FSM
+// ═══════════════════════════════════════════════════════════
+export const PIPELINE_STAGES = [
+  { id: 'outline' as const, label: '大纲构思', icon: 'Layout', desc: '确定故事骨架与章节脉络' },
+  { id: 'characters' as const, label: '角色塑造', icon: 'Users', desc: '构建主角弧光与配角关系网' },
+  { id: 'beats' as const, label: '节拍编排', icon: 'GanttChart', desc: '铺设每章关键剧情节拍' },
+  { id: 'drafting' as const, label: '正稿写作', icon: 'Pen', desc: '逐章展开叙事流' },
+  { id: 'polish' as const, label: '润色打磨', icon: 'Sparkles', desc: '迭代修改与文笔提升' },
+] as const;
+
+export type PipelineStage = (typeof PIPELINE_STAGES)[number]['id'];
+
+export interface PipelineState {
+  current: PipelineStage;
+  prerequisites: Partial<Record<PipelineStage, boolean>>;
+  completed: PipelineStage[];
+}
+
+// ═══════════════════════════════════════════════════════════
+// Left Sidebar: dual-layer topology
+// ═══════════════════════════════════════════════════════════
+export type LeftPanelLayer = 'projects' | 'knowledge';
+export type KnowledgeBaseTab = 'outline' | 'characters' | 'worldbuilding';
+
+// ═══════════════════════════════════════════════════════════
+// Right Panel: AI Response Card Stream
+// ═══════════════════════════════════════════════════════════
+export type AICardType = 'generated-text' | 'rewrite' | 'sensory' | 'vote-request' | 'continue';
+
+export interface AICard {
+  id: string;
+  type: AICardType;
+  title: string;
+  content: string;
+  sourceAction: string;
+  chapterId: string;
+  timestamp: number;
+  applied: boolean;
+  variant?: 'compare' | 'draft';
+  compareWith?: string; // original text for comparison
+}
+
 export type GenerationPhase = 'idle' | 'outline-generating' | 'outline-review' | 'writing';
 
 export interface ApiConfig {
@@ -124,6 +167,9 @@ export interface Novel {
   protagonist: Protagonist | null;
   timeline: TimelineNode[];
   worldBuildingText: string;
+  // Pipeline
+  pipelineStage: PipelineStage;
+  pipelineCompleted: PipelineStage[];
   // Memory tracking
   globalMemory: {
     mainPlot: string;
@@ -141,4 +187,3 @@ export interface Novel {
 }
 
 export type EditorMode = 'inspiration' | 'chapter-edit';
-export type RightPanelTab = 'ai-assistant' | 'story-bible' | 'memory' | 'outline';

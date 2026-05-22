@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Novel, Chapter, Character, WorldSetting, MemoryEntry, GenerationOutline, ApiConfig } from '@/types';
+import type { Novel, Chapter, Character, WorldSetting, MemoryEntry, GenerationOutline, ApiConfig, PipelineStage } from '@/types';
 import { generateId } from '@/lib/utils';
 
 interface NovelState {
@@ -24,6 +24,9 @@ interface NovelState {
   setChapterCount: (novelId: string, count: number) => void;
   setGenerationPhase: (novelId: string, phase: Novel['generationPhase']) => void;
   setGenerationOutline: (novelId: string, outline: GenerationOutline) => void;
+
+  // Pipeline
+  setPipelineStage: (novelId: string, stage: PipelineStage) => void;
 
   // Chapter
   addChapter: (novelId: string, title: string, summary?: string) => string;
@@ -77,6 +80,8 @@ export const useNovelStore = create<NovelState>()(
           chapterCount: 10,
           generationPhase: 'idle',
           generationOutline: null,
+          pipelineStage: 'outline' as PipelineStage,
+          pipelineCompleted: [] as PipelineStage[],
           protagonist: null,
           timeline: [],
           worldBuildingText: '',
@@ -169,9 +174,22 @@ export const useNovelStore = create<NovelState>()(
               timeline: outline.timeline,
               worldBuildingText: outline.worldBuilding,
               status: 'writing' as const,
+              pipelineStage: 'drafting' as PipelineStage,
+              pipelineCompleted: ['outline'] as PipelineStage[],
               chapters,
               updatedAt: Date.now(),
             };
+          }),
+        })),
+
+      setPipelineStage: (novelId, stage) =>
+        set((s) => ({
+          novels: s.novels.map((n) => {
+            if (n.id !== novelId) return n;
+            const completed = n.pipelineCompleted.includes(stage)
+              ? n.pipelineCompleted
+              : [...n.pipelineCompleted, stage];
+            return { ...n, pipelineStage: stage, pipelineCompleted: completed, updatedAt: Date.now() };
           }),
         })),
 
