@@ -159,10 +159,18 @@ export function parseJSONFromText(text: string): unknown | null {
     let cleaned = text;
     const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (m) cleaned = m[1];
-    const start = cleaned.indexOf('{');
-    const end = cleaned.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      return JSON.parse(cleaned.slice(start, end + 1));
+
+    // Try to find JSON array first, then object
+    const arrStart = cleaned.indexOf('[');
+    const arrEnd = cleaned.lastIndexOf(']');
+    if (arrStart >= 0 && arrEnd > arrStart) {
+      return JSON.parse(cleaned.slice(arrStart, arrEnd + 1));
+    }
+
+    const objStart = cleaned.indexOf('{');
+    const objEnd = cleaned.lastIndexOf('}');
+    if (objStart >= 0 && objEnd > objStart) {
+      return JSON.parse(cleaned.slice(objStart, objEnd + 1));
     }
   } catch { /* fall through */ }
   return null;
