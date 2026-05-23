@@ -185,17 +185,18 @@ html:not(.dark) .glass-modal {
 
 .writer-prose {
   font-family: var(--font-serif);
-  font-size: 16px;
-  line-height: 0.15;
-  letter-spacing: 0.02em;
+  font-size: 15px;
+  line-height: 2.2;
+  letter-spacing: 0.04em;
   color: var(--color-text-primary);
-  text-align: center;
+  text-align: justify;
+  text-justify: inter-word;
   overflow-wrap: break-word;
 }
 
 .writer-prose p,
 .writer-prose div {
-  margin-bottom: 0.3em;
+  margin-bottom: 0.6em;
 }
 
 /* ═══════════════════════════════════════════════════════════

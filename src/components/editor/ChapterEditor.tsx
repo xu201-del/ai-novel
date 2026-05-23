@@ -900,8 +900,8 @@ export default function ChapterEditor() {
       </div>
 
       {/* Editor area — natural flow, no nested scroll */}
-      <div className="px-6 py-8">
-        <div className="max-w-4xl mx-auto relative">
+      <div className="flex-1 flex justify-center px-6 py-8 overflow-y-auto">
+        <div className="w-full max-w-2xl relative">
           {/* AI generation streaming overlay */}
           {isGenerating && activeAction === 'generate' && (
             <div className="absolute top-0 left-0 right-0 z-10 flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 animate-fade-in -mt-2 mb-2">
@@ -919,10 +919,10 @@ export default function ChapterEditor() {
             onMouseUp={handleSelectionChange}
             onKeyUp={handleSelectionChange}
             className={cn(
-              'outline-none text-[var(--color-text-primary)] min-h-[60vh]',
+              'outline-none min-h-[60vh] cursor-text',
               'writer-prose',
+              'selection:bg-amber-500/20 selection:text-amber-300',
               isGenerating && activeAction === 'generate' ? 'opacity-50' : '',
-              'cursor-text',
             )}
             dangerouslySetInnerHTML={{ __html: renderContentToHtml(localContent, aiSegments.length > 0 ? aiSegments : undefined) }}
           />
