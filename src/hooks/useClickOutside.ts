@@ -1,5 +1,9 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
+/**
+ * 事件遮蔽与垃圾回收 — useRef 死锁 DOM 节点，
+ * 在捕获阶段拦截 mousedown/touchstart 以实现完全事件层隔离。
+ */
 export function useClickOutside<T extends HTMLElement>(
   handler: () => void,
   enabled: boolean = true
@@ -15,11 +19,12 @@ export function useClickOutside<T extends HTMLElement>(
       handler();
     };
 
-    document.addEventListener('mousedown', listener);
-    document.addEventListener('touchstart', listener);
+    // 捕获阶段注册 — 在目标元素的事件处理器之前拦截，实现事件遮蔽
+    document.addEventListener('mousedown', listener, true);
+    document.addEventListener('touchstart', listener, true);
     return () => {
-      document.removeEventListener('mousedown', listener);
-      document.removeEventListener('touchstart', listener);
+      document.removeEventListener('mousedown', listener, true);
+      document.removeEventListener('touchstart', listener, true);
     };
   }, [handler, enabled]);
 

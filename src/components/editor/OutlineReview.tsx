@@ -168,7 +168,7 @@ export default function OutlineReview() {
               >
                 <span className="text-[10px] text-[var(--color-text-dim)] w-5 shrink-0">{i + 1}</span>
                 <span className="font-medium text-[var(--color-text-secondary)] shrink-0">{ch.title}</span>
-                <span className="text-xs text-[var(--color-text-muted)] truncate">— {ch.summary}</span>
+                <span className="text-xs text-[var(--color-text-muted)] truncate">— {ch.coreConflict}</span>
               </div>
             ))}
           </div>

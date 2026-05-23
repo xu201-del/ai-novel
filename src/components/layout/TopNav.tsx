@@ -8,6 +8,7 @@ import {
   BookOpen, PanelLeftClose, PanelLeft, PanelRightClose, PanelRight,
   Settings, Key, Check, X,
 } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 
 const MODEL_OPTIONS = [
   { id: 'deepseek-v3', label: 'DeepSeek V3' },
@@ -92,6 +93,7 @@ export default function TopNav() {
             <Settings size={16} />
             {!apiConfig.key && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] absolute top-1 right-1" />}
           </button>
+          <ThemeToggle />
           <button onClick={toggleRightPanel} className="btn-ghost px-2">
             {rightPanelOpen ? <PanelRightClose size={16} /> : <PanelRight size={16} />}
           </button>

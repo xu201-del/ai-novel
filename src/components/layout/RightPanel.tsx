@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNovelStore } from '@/stores/novel-store';
 import { useUIStore } from '@/stores/ui-store';
-import { useDebouncedMemorySync } from '@/hooks/useDebouncedMemorySync';
+import { useDebouncedMemorySync, type DSMemoryNode } from '@/hooks/useDebouncedMemorySync';
 import { cn } from '@/lib/utils';
 import {
   Bot, BookOpen, Brain, ListTree, Sparkles, Copy, Check, X,
   ChevronDown, ChevronRight, FileText, RefreshCw, Eye, Columns,
-  MessageSquare, Zap, ArrowDownToLine, Clock, Trash2, Loader2,
+  MessageSquare, Zap, ArrowDownToLine, Clock, Trash2, Loader2, Telescope,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { AICard, AICardType, GrowthStageId } from '@/types';
@@ -37,6 +37,8 @@ export default function RightPanel() {
 
   const currentNovel = useNovelStore((s) => s.currentNovel());
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
+  const worldBibleAwakened = useUIStore((s) => s.worldBibleAwakened);
+  const setWorldBibleAwakened = useUIStore((s) => s.setWorldBibleAwakened);
   const aiCards = useUIStore((s) => s.aiCards);
   const removeAICard = useUIStore((s) => s.removeAICard);
   const markCardApplied = useUIStore((s) => s.markCardApplied);
@@ -115,11 +117,21 @@ export default function RightPanel() {
         )}
 
         {currentNovel && activeTab === 'story-bible' && (
-          <StoryBiblePanel novel={currentNovel} />
+          <div className="relative h-full">
+            <StoryBiblePanel novel={currentNovel} />
+            {!worldBibleAwakened && (
+              <WorldBibleBlurOverlay onActivate={() => setWorldBibleAwakened(true)} />
+            )}
+          </div>
         )}
 
         {currentNovel && activeTab === 'memory' && (
-          <MemoryPanel novel={currentNovel} memoryNodes={nodes} isSyncing={isSyncing} />
+          <div className="relative h-full">
+            <MemoryPanel novel={currentNovel} memoryNodes={nodes} isSyncing={isSyncing} />
+            {!worldBibleAwakened && (
+              <WorldBibleBlurOverlay onActivate={() => setWorldBibleAwakened(true)} />
+            )}
+          </div>
         )}
 
         {currentNovel && activeTab === 'toc' && (
@@ -149,7 +161,7 @@ function AIAssistantPanel({ aiCards, expandedCards, compareMode, memoryNodes, is
   aiCards: AICard[];
   expandedCards: Set<string>;
   compareMode: string | null;
-  memoryNodes: { id: string; label: string; detail: string }[];
+  memoryNodes: DSMemoryNode[];
   isSyncing: boolean;
   lastSync: number | null;
   onToggleExpand: (id: string) => void;
@@ -171,16 +183,29 @@ function AIAssistantPanel({ aiCards, expandedCards, compareMode, memoryNodes, is
         </span>
       </div>
 
-      {/* Memory nodes */}
+      {/* Memory nodes — DeepSeek 增量记忆 */}
       {memoryNodes.length > 0 && (
-        <div className="p-2 space-y-1 border-b border-[var(--color-border-secondary)]">
+        <div className="p-2 space-y-1.5 border-b border-[var(--color-border-secondary)]">
+          <div className="flex items-center gap-1.5 px-1.5">
+            <Brain size={10} className="text-[var(--color-accent)]" />
+            <span className="text-[9px] text-[var(--color-text-dim)] uppercase tracking-wider">DeepSeek 增量记忆</span>
+          </div>
           {memoryNodes.map((n) => (
-            <div key={n.id} className="flex items-start gap-1.5 px-1.5 py-1 animate-fade-in">
-              <div className="w-1 h-1 rounded-full bg-[var(--color-accent)] mt-1.5 shrink-0" />
-              <div>
+            <div key={n.id} className="px-1.5 py-1 animate-fade-in">
+              <div className="flex items-center justify-between mb-0.5">
                 <span className="text-[10px] font-medium text-[var(--color-text-primary)]">{n.label}</span>
-                <p className="text-[10px] text-[var(--color-text-dim)]">{n.detail}</p>
+                <span className="text-[9px] text-[var(--color-text-dim)]">{Math.round(n.confidence * 100)}%</span>
               </div>
+              <div className="w-full h-0.5 rounded-full bg-[var(--color-bg-tertiary)] mb-1 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.round(n.confidence * 100)}%`,
+                    backgroundColor: n.confidence > 0.6 ? 'var(--color-accent)' : n.confidence > 0.3 ? 'var(--color-amber-start)' : 'var(--color-text-dim)',
+                  }}
+                />
+              </div>
+              <p className="text-[10px] text-[var(--color-text-dim)] leading-relaxed">{n.detail}</p>
             </div>
           ))}
         </div>
@@ -350,28 +375,47 @@ function StoryBiblePanel({ novel }: { novel: import('@/types').Novel }) {
 // ─── Memory Panel ──────────────────────────────────────────
 function MemoryPanel({ novel, memoryNodes, isSyncing }: {
   novel: import('@/types').Novel;
-  memoryNodes: { id: string; label: string; detail: string }[];
+  memoryNodes: DSMemoryNode[];
   isSyncing: boolean;
 }) {
+  const nodeColor = (label: string) => {
+    if (label === 'Time Dimension') return 'var(--color-blue)';
+    if (label === 'Token Fingerprint') return 'var(--color-purple)';
+    return 'var(--color-amber-start)';
+  };
+
   return (
     <div className="p-3 space-y-3 overflow-y-auto h-full">
-      {/* Live memory nodes */}
+      {/* Live memory nodes — DeepSeek 增量语义提取 */}
       <div className="glass-depth-1 rounded-[var(--radius-lg)] p-3">
         <div className="flex items-center gap-2 mb-2">
-          <h4 className="text-[10px] font-semibold text-[var(--color-accent)] uppercase tracking-wider">实时剧情线索</h4>
+          <Brain size={11} className="text-[var(--color-accent)]" />
+          <h4 className="text-[10px] font-semibold text-[var(--color-accent)] uppercase tracking-wider">DeepSeek 语义节点</h4>
           {isSyncing && <Loader2 size={10} className="text-[var(--color-accent)] animate-spin" />}
         </div>
         {memoryNodes.length === 0 ? (
-          <p className="text-[10px] text-[var(--color-text-dim)]">编辑正文以自动提取...</p>
+          <p className="text-[10px] text-[var(--color-text-dim)]">编辑正文以自动提取语义节点...</p>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {memoryNodes.map((n) => (
-              <div key={n.id} className="flex items-start gap-1.5">
-                <div className="w-1 h-1 rounded-full bg-[var(--color-accent)] mt-1.5 shrink-0" />
-                <div>
-                  <span className="text-[10px] font-medium text-[var(--color-text-primary)]">{n.label}</span>
-                  <p className="text-[10px] text-[var(--color-text-dim)]">{n.detail}</p>
+              <div key={n.id} className="animate-fade-in">
+                <div className="flex items-center justify-between mb-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: nodeColor(n.label) }} />
+                    <span className="text-[10px] font-medium text-[var(--color-text-primary)]">{n.label}</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-[var(--color-text-dim)]">{Math.round(n.confidence * 100)}%</span>
                 </div>
+                <div className="w-full h-0.5 rounded-full bg-[var(--color-bg-tertiary)] mb-1 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.round(n.confidence * 100)}%`,
+                      backgroundColor: n.confidence > 0.6 ? 'var(--color-accent)' : n.confidence > 0.3 ? 'var(--color-amber-start)' : 'var(--color-text-dim)',
+                    }}
+                  />
+                </div>
+                <p className="text-[10px] text-[var(--color-text-dim)] leading-relaxed ml-3.5">{n.detail}</p>
               </div>
             ))}
           </div>
@@ -442,6 +486,31 @@ function TOCPanel({ novel, selectedChapterId, onChapterClick }: {
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ─── World Bible Blur Overlay ──────────────────────────────
+function WorldBibleBlurOverlay({ onActivate }: { onActivate: () => void }) {
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center backdrop-blur-md bg-zinc-950/40 animate-fade-in">
+      <div className="text-center space-y-4 px-6">
+        <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto">
+          <Telescope size={28} className="text-amber-400" strokeWidth={1.5} />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-zinc-100 mb-1">世界圣经未唤醒</h3>
+          <p className="text-[11px] text-zinc-400 max-w-[200px] leading-relaxed">
+            点击下方按钮，DeepSeek 将基于你的大纲框架，一键唤醒世界观、角色档案与记忆锚点
+          </p>
+        </div>
+        <button
+          onClick={onActivate}
+          className="px-5 py-2.5 rounded-[var(--radius-lg)] bg-gradient-to-r from-amber-500/90 to-amber-600/90 text-[#0b0b0f] text-xs font-bold hover:from-amber-400 hover:to-amber-500 transition-all duration-300 shadow-[0_0_24px_rgba(245,158,11,0.35)] hover:shadow-[0_0_36px_rgba(245,158,11,0.5)] active:scale-95"
+        >
+          🔮 一键唤醒世界圣经
+        </button>
       </div>
     </div>
   );

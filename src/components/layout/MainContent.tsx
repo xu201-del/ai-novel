@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNovelStore } from '@/stores/novel-store';
 import { useUIStore } from '@/stores/ui-store';
-import { Lightbulb, PenLine, BookOpen, Loader2 } from 'lucide-react';
+import { Lightbulb, PenLine, BookOpen, Loader2, LayoutTemplate } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import InspirationMode from '@/components/editor/InspirationMode';
 import ChapterEditor from '@/components/editor/ChapterEditor';
+import NovelFrameworkView from '@/components/editor/NovelFrameworkView';
 
 export default function MainContent() {
   const [mounted, setMounted] = useState(false);
@@ -16,6 +18,9 @@ export default function MainContent() {
   const currentNovel = useNovelStore((s) => s.currentNovel());
   const editorMode = useUIStore((s) => s.editorMode);
   const setEditorMode = useUIStore((s) => s.setEditorMode);
+  const concurrentGenPhase = useUIStore((s) => s.concurrentGenPhase);
+
+  const isGenerating = concurrentGenPhase === 'generating';
 
   if (!mounted) {
     return (
@@ -91,18 +96,46 @@ export default function MainContent() {
           icon={Lightbulb}
           label="灵感输入"
           active={editorMode === 'inspiration'}
+          disabled={isGenerating}
           onClick={() => setEditorMode('inspiration')}
         />
         <ModeTab
           icon={PenLine}
           label={isWritingPhase ? '创作编辑' : '章节编辑'}
           active={editorMode === 'chapter-edit'}
+          disabled={isGenerating}
           onClick={() => setEditorMode('chapter-edit')}
+        />
+        <ModeTab
+          icon={LayoutTemplate}
+          label="完整框架"
+          active={editorMode === 'framework'}
+          disabled={isGenerating || !currentNovel?.novelFramework}
+          lockedHint={isGenerating ? '双轨编织中...' : !currentNovel?.novelFramework ? '生成后解锁' : undefined}
+          onClick={() => setEditorMode('framework')}
         />
       </div>
 
-      <div className="flex-1 overflow-hidden">
-        {editorMode === 'inspiration' ? <InspirationMode /> : <ChapterEditor />}
+      {/* Content area — AnimatePresence cross-fade routing */}
+      <div className="flex-1 min-h-0 relative">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={editorMode}
+            initial={{ opacity: 0, y: 8, filter: 'blur(4px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            className="absolute inset-0 overflow-y-auto"
+          >
+            {editorMode === 'inspiration' ? (
+              <InspirationMode />
+            ) : editorMode === 'framework' ? (
+              <NovelFrameworkView />
+            ) : (
+              <ChapterEditor />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </main>
   );
@@ -113,24 +146,36 @@ function ModeTab({
   label,
   active,
   onClick,
+  disabled,
+  lockedHint,
 }: {
   icon: LucideIcon;
   label: string;
   active: boolean;
   onClick: () => void;
+  disabled?: boolean;
+  lockedHint?: string;
 }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      title={lockedHint}
       className={cn(
         'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all',
-        active
+        disabled && 'opacity-30 cursor-not-allowed',
+        active && !disabled
           ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
-          : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+          : 'border-transparent text-[var(--color-text-muted)]',
+        !disabled && !active && 'hover:text-[var(--color-text-secondary)]'
       )}
     >
       <Icon size={15} strokeWidth={1.5} />
       {label}
+      {lockedHint && (
+        <span className="text-[10px] text-[var(--color-text-dim)] ml-1 hidden lg:inline">
+          {lockedHint}
+        </span>
+      )}
     </button>
   );
 }

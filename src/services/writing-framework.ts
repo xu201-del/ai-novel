@@ -31,7 +31,8 @@ export function getStageForChapter(
     if (chapterIndex === 3) return 4;
     return 5;
   }
-  return Math.min(Math.floor(chapterIndex / 2) + 1, 5);
+  // Proportional: 5 stages evenly spread across totalChapters
+  return Math.min(Math.floor((chapterIndex / totalChapters) * 5) + 1, 5);
 }
 
 export const TROPE_TAGS = [

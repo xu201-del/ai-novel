@@ -41,9 +41,49 @@
   --radius-2xl: 20px;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Light mode — applied when <html> lacks .dark class
+   ═══════════════════════════════════════════════════════════ */
+html:not(.dark) {
+  --color-bg-primary: #f8f9fa;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f0f2f5;
+  --color-bg-elevated: #e9ecef;
+  --color-bg-hover: #dee2e6;
+  --color-border-primary: #dee2e6;
+  --color-border-secondary: #ced4da;
+  --color-border-accent: #adb5bd;
+  --color-text-primary: #212529;
+  --color-text-secondary: #495057;
+  --color-text-muted: #6c757d;
+  --color-text-dim: #adb5bd;
+  --color-accent: #c8943a;
+  --color-accent-dim: #7a5a20;
+  --color-accent-bg: rgba(200, 148, 58, 0.12);
+  --color-accent-hover: #b8862e;
+  --color-purple: #5c4cc8;
+  --color-purple-dim: #3830a0;
+  --color-purple-bg: rgba(92, 76, 200, 0.08);
+  --color-green: #2e9a6a;
+  --color-green-dim: #1a6038;
+  --color-green-bg: rgba(46, 154, 106, 0.08);
+  --color-red: #d04050;
+  --color-red-dim: #882838;
+  --color-red-bg: rgba(208, 64, 80, 0.08);
+  --color-blue: #3e80cc;
+  --color-blue-dim: #205080;
+  --color-blue-bg: rgba(62, 128, 204, 0.08);
+  --color-amber-start: #c8943a;
+  --color-amber-end: #d06820;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: #252530 transparent;
+}
+
+html:not(.dark) * {
+  scrollbar-color: #c0c0c0 transparent;
 }
 
 body {
@@ -52,6 +92,7 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 ::selection {
@@ -104,6 +145,24 @@ body {
   border-radius: var(--radius-2xl);
 }
 
+html:not(.dark) .glass-depth-1 {
+  background: rgba(240, 242, 245, 0.75);
+  border: 1px solid rgba(222, 226, 230, 0.8);
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.06);
+}
+html:not(.dark) .glass-depth-2 {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(206, 212, 218, 0.6);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+}
+html:not(.dark) .glass-modal {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(206, 212, 218, 0.7);
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(200, 148, 58, 0.08) inset;
+}
+
 /* ═══════════════════════════════════════════════════════════
    Writer editor typography
    ═══════════════════════════════════════════════════════════ */
@@ -127,8 +186,8 @@ body {
 .writer-prose {
   font-family: var(--font-serif);
   font-size: 16px;
-  line-height: 2.2;
-  letter-spacing: 0.03em;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
   color: var(--color-text-primary);
 }
 

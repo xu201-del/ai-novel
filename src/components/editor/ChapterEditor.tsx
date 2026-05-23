@@ -9,10 +9,11 @@ import {
   buildNextChapterPrompt, buildRewritePrompt,
 } from '@/services/prompts';
 import { GROWTH_STAGES, getStageForChapter } from '@/services/writing-framework';
+import { getChapterContext } from '@/services/framework-prompts';
 import { cn, formatWordCount } from '@/lib/utils';
 import {
   ChevronLeft, ChevronRight, Plus, Trash2, Sparkles, Loader2, StopCircle,
-  CheckCircle2, GanttChart, Pen, ListTree, Users,
+  CheckCircle2, GanttChart, Pen, ListTree, Users, Copy, Check,
 } from 'lucide-react';
 import type { PipelineStage } from '@/types';
 import { PIPELINE_STAGES } from '@/types';
@@ -149,6 +150,7 @@ export default function ChapterEditor() {
   const [localContent, setLocalContent] = useState('');
   const [localTitle, setLocalTitle] = useState('');
   const [saved, setSaved] = useState(true);
+  const [copied, setCopied] = useState(false);
   const [activeAction, setActiveAction] = useState<ToolAction>(null);
   const [selectedText, setSelectedText] = useState('');
   const [floatingMenu, setFloatingMenu] = useState<{ top: number; left: number } | null>(null);
@@ -218,7 +220,7 @@ export default function ChapterEditor() {
   // ─── Render plain text to contentEditable HTML ──────────
   const renderContentToHtml = (content: string, aiSegments?: Array<{ start: number; end: number; id: string }>): string => {
     if (!aiSegments || aiSegments.length === 0) {
-      return content.split('\n').map((p, i) => `<p class="mb-6">${p || '<br>'}</p>`).join('');
+      return content.split('\n').map((p, i) => `<p>${p || '<br>'}</p>`).join('');
     }
     // Build spans with AI markers
     const sorted = [...aiSegments].sort((a, b) => a.start - b.start);
@@ -234,7 +236,7 @@ export default function ChapterEditor() {
     if (cursor < content.length) {
       result += escapeHtml(content.slice(cursor));
     }
-    return result.split('\n').map((p) => `<p class="mb-6">${p || '<br>'}</p>`).join('');
+    return result.split('\n').map((p) => `<p>${p || '<br>'}</p>`).join('');
   };
 
   const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -450,6 +452,21 @@ export default function ChapterEditor() {
 
     try {
       const prevTail = currentChapter.content.slice(-400);
+
+      // 提取当前章节的大纲子框架
+      const outlineChapter = currentNovel.generationOutline?.chapters?.[currentIndex];
+      const chapterOutline = outlineChapter && 'coreConflict' in outlineChapter
+        ? {
+            coreConflict: outlineChapter.coreConflict,
+            plotFlow: outlineChapter.plotFlow,
+            informationAsymmetry: outlineChapter.informationAsymmetry,
+            visualSymbol: outlineChapter.visualSymbol,
+            cliffhangerPoint: outlineChapter.cliffhangerPoint,
+            industryLore: outlineChapter.industryLore,
+            uiMetrics: outlineChapter.uiMetrics,
+          }
+        : undefined;
+
       const prompt = buildChapterPrompt({
         title: currentChapter.title,
         summary: currentChapter.summary,
@@ -462,6 +479,10 @@ export default function ChapterEditor() {
         outline: currentNovel.generationOutline?.outline || '',
         location: currentNovel.globalMemory.location || '',
         memoryNotes: currentNovel.globalMemory.notes || '',
+        novelFrameworkContext: currentNovel.novelFramework
+          ? getChapterContext(currentNovel.novelFramework, currentIndex)
+          : undefined,
+        chapterOutline,
       });
 
       let fullText = '';
@@ -607,6 +628,9 @@ export default function ChapterEditor() {
         protagonist: currentNovel.protagonist?.name || '',
         outline: currentNovel.generationOutline?.outline || '',
         globalMemory: currentNovel.globalMemory.mainPlot || '',
+        novelFrameworkContext: currentNovel.novelFramework
+          ? getChapterContext(currentNovel.novelFramework, sortedChapters.length)
+          : undefined,
       });
 
       let fullText = '';
@@ -752,6 +776,28 @@ export default function ChapterEditor() {
     setSelectedChapterId(prevChapter?.id || nextChapter?.id || null);
   };
 
+  const handleCopy = async () => {
+    if (!currentChapter) return;
+    const text = `${currentChapter.title}\n\n${localContent}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   // ─── Pipeline stage change ───────────────────────────────
   const handlePipelineStage = (stage: PipelineStage) => {
     if (!currentNovel) return;
@@ -764,7 +810,7 @@ export default function ChapterEditor() {
 
   if (!currentChapter) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[var(--color-bg-primary)] gap-3">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center bg-[var(--color-bg-primary)] gap-3">
         <Pen size={36} className="text-[var(--color-text-dim)]" strokeWidth={1} />
         <p className="text-sm text-[var(--color-text-muted)]">选择或创建章节开始写作</p>
         <button onClick={handleNewChapter} className="btn-primary text-xs">
@@ -776,7 +822,7 @@ export default function ChapterEditor() {
 
   // ─── Render ──────────────────────────────────────────────
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-bg-primary)]">
+    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-bg-primary)]">
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-3 py-2 border-b border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] shrink-0 overflow-x-auto">
         <ToolButton icon={Sparkles} label="AI 生成" desc="根据大纲生成当前章节" loading={activeAction === 'generate'} active={activeAction === 'generate'} disabled={isGenerating && activeAction !== 'generate'} onClick={handleGenerate} />
@@ -824,6 +870,9 @@ export default function ChapterEditor() {
           <span className={cn('text-[10px]', saved ? 'text-[var(--color-green)]' : 'text-[var(--color-text-dim)]')}>
             {saved ? '已保存' : '保存中...'}
           </span>
+          <button onClick={handleCopy} className="p-1 text-[var(--color-text-dim)] hover:text-[var(--color-accent)] transition-colors" title="复制章节内容">
+            {copied ? <Check size={14} className="text-[var(--color-green)]" /> : <Copy size={14} />}
+          </button>
           <button onClick={handleNewChapter} className="p-1 text-[var(--color-text-dim)] hover:text-[var(--color-accent)] transition-colors" title="新建章节">
             <Plus size={14} />
           </button>
@@ -833,8 +882,8 @@ export default function ChapterEditor() {
         </div>
       </div>
 
-      {/* Editor area */}
-      <div className="flex-1 overflow-y-auto px-6 py-8">
+      {/* Editor area — natural flow, no nested scroll */}
+      <div className="px-6 py-8">
         <div className="max-w-4xl mx-auto relative">
           {/* AI generation streaming overlay */}
           {isGenerating && activeAction === 'generate' && (
@@ -855,10 +904,9 @@ export default function ChapterEditor() {
             className={cn(
               'outline-none text-[var(--color-text-primary)] min-h-[60vh]',
               'writer-prose',
-              'prose-p:mb-6',
               isGenerating && activeAction === 'generate' ? 'opacity-50' : '',
               'cursor-text',
-              '[&_p]:mb-6'
+              '[&_p]:mb-[0.3em]'
             )}
             dangerouslySetInnerHTML={{ __html: renderContentToHtml(localContent, aiSegments.length > 0 ? aiSegments : undefined) }}
           />

@@ -1,4 +1,7 @@
 import type { WriteMode } from '@/services/writing-framework';
+import type { NovelFramework } from './novel-framework';
+export type { NovelFramework, FrameworkVolume } from './novel-framework';
+export { createEmptyFramework } from './novel-framework';
 
 export interface Protagonist {
   name: string;
@@ -16,9 +19,38 @@ export interface TimelineNode {
   description: string;
 }
 
+// ═══════════════════════════════════════════════════════════
+// 单章小框架 — 信息差驱动章节大纲
+// ═══════════════════════════════════════════════════════════
+export interface OutlineChapterPlotFlow {
+  hook: string;       // 黄金开篇300字 — 反常细节/突发危机
+  pressure: string;   // 矛盾升级 — 逼向绝境的过程
+  climax: string;     // 最高燃点名场面
+}
+
+export interface OutlineChapterInfoAsymmetry {
+  godView: string;    // 上帝视角 — 读者窥探到的核心阴谋
+  blindSpot: string;  // 认知盲区 — 主角因何做出错误判断
+}
+
+export interface OutlineChapterUIMetrics {
+  timeDimension: string;        // 时态锚定 → DeepSeek 记忆面板
+  tokenFingerprint: string;     // 风格指纹 → DeepSeek 记忆面板
+  situationalInference: string; // 场景张力 → DeepSeek 记忆面板
+}
+
 export interface OutlineChapter {
+  id: string;
   title: string;
-  summary: string;
+  wordCountBudget: number;
+  coreConflict: string;                    // 针尖对麦芒的核心冲突，限80字
+  plotFlow: OutlineChapterPlotFlow;
+  informationAsymmetry: OutlineChapterInfoAsymmetry;
+  soulStage: string;                       // 自适应：建立信心/信念动摇/彻底毁灭/浴火重生
+  visualSymbol: string;                    // 贯穿全章的核心画面隐喻
+  industryLore: string[];                  // 行业垂直术语/职业黑话 ×3
+  cliffhangerPoint: string;               // 断崖卡点 — 在哪个致命瞬间戛然而止
+  uiMetrics: OutlineChapterUIMetrics;
 }
 
 export interface GenerationOutline {
@@ -97,6 +129,16 @@ export interface MemoryEntry {
 }
 
 // ═══════════════════════════════════════════════════════════
+// 篇内自定义细化章节 — 局部算力推演结果
+// ═══════════════════════════════════════════════════════════
+export interface VolumeChapter {
+  id: string;
+  chapterTitle: string;
+  microPlot: string;
+  cliffhangerPoint: string;
+}
+
+// ═══════════════════════════════════════════════════════════
 // Story Engine Pipeline FSM
 // ═══════════════════════════════════════════════════════════
 export const PIPELINE_STAGES = [
@@ -170,6 +212,8 @@ export interface Novel {
   // Pipeline
   pipelineStage: PipelineStage;
   pipelineCompleted: PipelineStage[];
+  // Full novel framework (12 parts)
+  novelFramework: NovelFramework | null;
   // Memory tracking
   globalMemory: {
     mainPlot: string;
@@ -179,6 +223,7 @@ export interface Novel {
   };
   // Content
   chapters: Chapter[];
+  volumeChapters: Record<string, VolumeChapter[]>;
   characters: Character[];
   worldSettings: WorldSetting[];
   memories: MemoryEntry[];
@@ -186,4 +231,4 @@ export interface Novel {
   updatedAt: number;
 }
 
-export type EditorMode = 'inspiration' | 'chapter-edit';
+export type EditorMode = 'inspiration' | 'chapter-edit' | 'framework';

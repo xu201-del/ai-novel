@@ -1,126 +1,316 @@
 import { WriteMode, GROWTH_STAGES, WRITE_MODES, getStageForChapter } from './writing-framework';
 
 // ═══════════════════════════════════════════════════════════
-//  一站式创作 Prompt — 大纲 + N 章框架
+//  一站式创作 Prompt — 信息差驱动单章小框架
+//  输出符合 InkFlow DS Pro DeepSeek 三轴记忆面板的 JSON
 // ═══════════════════════════════════════════════════════════
 export function buildCreationPrompt(idea: string, trope: string, chapterCount: number): string {
-  return `你是一位极具原创精神的资深出版编辑兼小说策划人。你必须拒绝一切网络小说套路，创造前所未见的故事。
+  const soulStages = chapterCount <= 5
+    ? '自适应分配以下阶段到各章：建立信心 → 信念动摇 → 彻底毁灭 → 浴火重生 → 新生蜕变'
+    : '章节分布遵循：前20% 建立信心 → 20%-40% 信念动摇 → 40%-60% 彻底毁灭 → 60%-80% 浴火重生 → 80%-100% 新生蜕变';
 
-【用户灵感】
-${idea}
-${trope ? `【偏好套路】${trope}` : ''}
+  const paddedCount = String(chapterCount).padStart(2, '0');
 
-## ⚠️ 绝对禁止（违反即失败）
+  return `# 角色设定
+你是世界顶级的网文大纲总编 + 商业剧本总监。你深谙读者心理与网络文学的商业抓手。
+你必须拒绝一切套路模板，创造前所未见、信息密度极高的故事。
 
-- 禁止"丹田破碎→觉醒远古血脉→逆天改命"模板
-- 禁止姓氏：叶、林、萧、楚、秦、苏（用罕见姓或复姓）
-- 禁止开局：宗门测试、学院入学、被退婚羞辱、天才变废材
-- 禁止"全宗震惊""全场哗然""所有人倒吸凉气"等群体反应
-- 禁止无来由的碾压爽文逻辑
-- 禁止"远古XX血脉""上古XX传承""万古第一XX"类命名
+# 用户输入
+- 核心灵感：${idea || '（由你自由发挥，创造最具冲击力的开篇）'}
+${trope ? `- 题材标签：${trope}` : ''}
+- 目标章节数：${chapterCount} 章
 
-## ✅ 必须做到
+---
 
-1. 主角要有真正的人性缺陷（不是"太善良"，而是自私/懦弱/偏见/上瘾）
-2. 金手指必须有代价（消耗寿命/记忆/情感/道德底线）
-3. 世界观必须有一个反直觉的独特规则
-4. 大纲必须有2个以上真正出人意料的转折
+# 🛑 四大死命令（违反即判定生成失败）
 
-严格按以下 JSON 格式输出，不要包含任何额外文字或 markdown 标记：
+## 一、起承转合死锁
+${soulStages}
+每一章的 "soulStage" 字段必须精确标注当前章节所处的成长阶段。
+禁止剧情平铺直叙——每一章都必须推动主角的心理曲线发生可感知的变化。
+
+## 二、黄金开篇与断崖结尾
+- 每章 "plotFlow.hook"：必须死锁在一个反常的感官细节或突发情绪冲突中（禁止"清晨醒来""阳光明媚"类平淡开局）
+- 每章 "cliffhangerPoint"：必须强行卡在戏剧冲突最高的刀刃上——一个未完成的决定、突然出现的威胁、颠覆认知的发现
+- 禁止把剧情交代完！禁止在章末让主角安全回家！
+
+## 三、制造信息差（逼疯读者的核心武器）
+- 每章 "informationAsymmetry.godView"：定义读者站在上帝视角所窥探到的核心阴谋或暗线危险
+- 每章 "informationAsymmetry.blindSpot"：定义主角因什么认知盲区而做出了危险的错误判断
+- 让读者尖叫"快看后面！"——这是衡量章节质量的唯一标准
+
+## 四、行业纵深与视觉符号
+- 每章 "industryLore"：注入 3 个行业垂直术语或职业黑话，让世界有真实的质感
+- 每章 "visualSymbol"：定义一个贯穿全章的核心画面隐喻（如：蒸发一半的黑伞、停在窗台不动的飞蛾）
+- 每个 visualSymbol 必须在 plotFlow 的三个阶段各出现一次（变奏重复）
+
+---
+
+# ⚠️ 绝对禁止（违反即失败）
+- 禁止姓氏：叶、林、萧、楚、秦、苏（用罕见姓或复姓：端木、闻人、即墨、百里、南宫）
+- 禁止开局：宗门测试、学院入学、被退婚羞辱、天才变废材、丹田破碎
+- 禁止"全场震惊""众人哗然""所有人倒吸凉气""脸色一变""瞳孔一缩"
+- 禁止无来由碾压爽文、禁止"远古XX血脉""上古XX传承""万古第一XX"
+- 主角必须有真实人性缺陷（不是"太善良"——而是自私/懦弱/成瘾/偏见/傲慢）
+- 金手指必须有明确代价（消耗寿命/记忆/情感/道德底线/他人生命）
+
+---
+
+# 输出 JSON Schema（严格遵守，不要任何额外文字或 markdown）
 
 {
-  "genre": "小说题材",
-  "subGenre": "细分标签",
+  "genre": "题材（8字以内）",
+  "subGenre": "细分标签（4字以内）",
   "title": "书名建议（15字以内，有网文传播力）",
-  "description": "书籍简介（100-200字，突出独特性）",
-  "synopsis": "核心梗概（一句话，80字以内）",
+  "description": "书籍简介（100-200字，突出世界观独特性和主角困境）",
+  "synopsis": "核心梗概（一句话，80字以内，必须有悬念钩子）",
   "protagonist": {
-    "name": "主角姓名（禁止叶/林/萧/楚/秦/苏姓）",
+    "name": "主角姓名（禁止叶林萧楚秦苏，使用罕见复姓）",
     "gender": "性别",
     "age": "年龄",
-    "personality": "性格（40字，必须包含真实人性缺陷，不是'太善良'）",
-    "background": "身世背景（60字，禁止丹田破碎/被退婚/家族被灭）",
-    "abilities": "核心能力/金手指（40字，必须有明确代价）",
-    "goals": "主要目标（30字）"
+    "personality": "性格（40字，必须包含真实人性缺陷）",
+    "background": "身世背景（60字，禁止丹田破碎/被退婚）",
+    "abilities": "核心能力/金手指（40字，必须有明确代价！）",
+    "goals": "主要目标（30字，具体而非抽象）"
   },
   "worldBuilding": "世界观设定（100-200字，必须包含一个反直觉的独特规则）",
-  "outline": "完整故事大纲（300-500字，分5段对应5个成长阶段，必须有2个以上出人意料的转折）",
+  "outline": "完整故事大纲（300-500字，分5段对应成长阶段，包含2个以上真正出人意料的转折）",
   "timeline": [
-    { "phase": "建立信念", "event": "关键事件", "description": "20-40字描述" },
-    { "phase": "信念动摇", "event": "关键事件", "description": "20-40字描述" },
-    { "phase": "彻底毁灭", "event": "关键事件", "description": "20-40字描述" },
-    { "phase": "浴火重生", "event": "关键事件", "description": "20-40字描述" },
-    { "phase": "新生蜕变", "event": "关键事件", "description": "20-40字描述" }
+    { "phase": "建立信念", "event": "关键事件", "description": "20-40字" },
+    { "phase": "信念动摇", "event": "关键事件", "description": "20-40字" },
+    { "phase": "彻底毁灭", "event": "关键事件", "description": "20-40字" },
+    { "phase": "浴火重生", "event": "关键事件", "description": "20-40字" },
+    { "phase": "新生蜕变", "event": "关键事件", "description": "20-40字" }
   ],
   "chapters": [
-    { "title": "第1章 章名", "summary": "30-50字概要" }
+    {
+      "id": "ch-01",
+      "title": "第 1 章：[富有动漫画面感的章节标题，15字以内]",
+      "wordCountBudget": 3000,
+      "coreConflict": "[本章针尖对麦芒的核心冲突，谁与谁在争夺什么，限80字]",
+      "plotFlow": {
+        "hook": "[黄金开篇300字的核心钩子——反常感官细节或突发危机]",
+        "pressure": "[矛盾如何一步步升级，把主角逼向绝境的过程]",
+        "climax": "[本章情绪/动作/画面的最高燃点名场面]"
+      },
+      "informationAsymmetry": {
+        "godView": "[读者上帝视角窥探到的核心阴谋或暗线危险]",
+        "blindSpot": "[主角的认知盲区，因何做出危险错误判断]"
+      },
+      "soulStage": "[建立信心 / 信念动摇 / 彻底毁灭 / 浴火重生]",
+      "visualSymbol": "[贯穿全章的核心画面隐喻，如：蒸发一半的黑伞]",
+      "industryLore": [
+        "[行业垂直术语或职业黑话 1]",
+        "[行业垂直术语或职业黑话 2]",
+        "[行业垂直术语或职业黑话 3]"
+      ],
+      "cliffhangerPoint": "[在哪个致命、抓狂的瞬间戛然而止？具体情节描写]",
+      "uiMetrics": {
+        "timeDimension": "[叙事时态锚定，如：午夜·第3日 | 时态：紧迫倒计时]",
+        "tokenFingerprint": "[语言风格指纹，如：极简短句流 | 高频动作描写 | 对话占比35%]",
+        "situationalInference": "[场景张力推断，如：毁灭性冲突 | 追逐/逃避 | 张力密度:85%]"
+      }
+    }
   ]
 }
 
-chapters 数组必须恰好包含 ${chapterCount} 个章节。`;
+# 关键要求
+- chapters 数组必须恰好包含 ${chapterCount} 个章节，id 从 ch-01 到 ch-${paddedCount}
+- 每章的 wordCountBudget 固定为 3000
+- 第 1 章 soulStage 必须是"建立信心"，最后一章必须是"新生蜕变"
+- uiMetrics 的三个字段将直接渲染到 InkFlow DS Pro 右侧 DeepSeek 记忆面板，必须精确、有信息量
+- 只输出纯 JSON，不要任何 markdown 标记、解释文字或寒暄`;
 }
 
 // ═══════════════════════════════════════════════════════════
-//  硬核写作引擎 — 五步写作法 + 成长阶段 + 文本铁律
+//  极速大纲生成 Prompt — 算力解耦·纯净单轨流
+//  只生成章节骨架：id / title / synopsis / cliffhangerPoint
+//  零 soulStage、零宏观设定、零角色圣经、零伏笔追踪
+// ═══════════════════════════════════════════════════════════
+export function buildSlimOutlinePrompt(idea: string, trope: string, chapterCount: number): string {
+  const paddedCount = String(chapterCount).padStart(2, '0');
+  return `# 角色设定
+你是顶级网文大纲策划师。你的唯一任务：根据灵感，无脑输出 ${chapterCount} 章的精简大纲骨架。
+禁止输出世界观、势力、能力体系、角色圣经、伏笔追踪等宏观字段——这些由后续流程单独处理。
+
+# 用户输入
+- 灵感：${idea || '自由发挥'}
+${trope ? `- 题材：${trope}` : ''}
+- 章节数：${chapterCount}
+
+# 输出 JSON（只输出纯 JSON，禁止 markdown）
+{
+  "genre": "题材（6字以内）",
+  "title": "书名建议（12字以内）",
+  "protagonist": { "name": "主角名（禁止叶林萧楚秦苏）", "gender": "性别", "age": "年龄", "personality": "性格（25字以内）", "background": "身世（30字以内）", "abilities": "金手指（20字以内）", "goals": "目标（20字以内）" },
+  "chapters": [
+    {
+      "id": "ch-01",
+      "title": "章节标题（15字以内）",
+      "synopsis": "本章核心冲突+剧情梗概（80-100字）",
+      "cliffhangerPoint": "断崖卡点——本章在哪个致命瞬间戛然而止（30-50字）"
+    }
+  ]
+}
+
+# 铁律
+- chapters 必须恰好 ${chapterCount} 个，id: ch-01 ~ ch-${paddedCount}
+- 每章 cliffhangerPoint 必须具体、抓人、让读者必须翻下一章
+- 禁止姓氏：叶林萧楚秦苏
+- 只输出纯 JSON，零额外文字
+- 禁止输出 soulStage, plotFlow, informationAsymmetry 等宏字段`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  大师级章节写作引擎
+//  画面隐喻 · 信息差 · 长短句呼吸 · 断崖悬念
 // ═══════════════════════════════════════════════════════════
 export function buildChapterPrompt(params: {
   title: string; summary: string; prevTail: string;
   chapterIndex: number; totalChapters: number; writeMode: WriteMode;
   genre: string; protagonist: string; outline: string;
   location: string; memoryNotes: string;
+  novelTitle?: string;
+  novelFrameworkContext?: string;   // 从 NovelFramework 提取的上下文
+  chapterOutline?: {
+    coreConflict?: string;
+    plotFlow?: { hook?: string; pressure?: string; climax?: string };
+    informationAsymmetry?: { godView?: string; blindSpot?: string };
+    visualSymbol?: string;
+    cliffhangerPoint?: string;
+    industryLore?: string[];
+    uiMetrics?: { timeDimension?: string; tokenFingerprint?: string; situationalInference?: string };
+  };
 }): string {
-  const { title, summary, prevTail, chapterIndex, totalChapters, writeMode, genre, protagonist, outline, location, memoryNotes } = params;
+  const { title, summary, prevTail, chapterIndex, totalChapters, writeMode, genre, protagonist, outline, location, memoryNotes, novelTitle, novelFrameworkContext, chapterOutline } = params;
   const stageId = getStageForChapter(chapterIndex, totalChapters, writeMode);
   const stageInfo = GROWTH_STAGES.find((s) => s.id === stageId) || GROWTH_STAGES[0];
   const modeInfo = WRITE_MODES.find((m) => m.id === writeMode) || WRITE_MODES[0];
 
-  return `# 角色设定
-你是世界上最顶尖的长篇小说家 + 金牌编剧。你拒绝平庸，拒绝流水账，只输出高密度、高张力、极致沉浸的文字。
+  // ── 篇幅路由 ──
+  const lengthRouting = writeMode === 'short'
+    ? '【短篇模式】单线进化。开篇直接切入危机现场。人物在极短时间内经历命运或心态的骤变。结尾必须来一个意料之外、情理之中的反转。'
+    : writeMode === 'medium'
+    ? '【中篇模式】双线交织。主线清晰，可带一条副线。核心重点在于展现核心事件如同"慢性毒药"一般，如何一丝丝蚕食、重塑主角的心理防线。'
+    : '【长篇连载】多线推进。宏观上遵循灵魂蜕变历程（建立信心 ➔ 遭遇动摇 ➔ 陷入谷底 ➔ 浴火重生）。本章处于：' + stageInfo.name;
 
-# 当前上下文
-- 写作模式：${modeInfo.name}（${modeInfo.density}）
-- 书籍题材：${genre || '未知'}
-- 主角：${protagonist || '待补充'}
-- 当前场景：${location || '待补充'}
-- 伏笔备注：${memoryNotes || '无'}
-- 全局大纲：${outline || '参考梗概'}
+  // ── 画面隐喻（来自大纲或自由发挥）──
+  const visualSymbol = chapterOutline?.visualSymbol || '（由你根据本章核心冲突自由创造一个贯穿全章的画面隐喻）';
+  const visualSymbolBlock = chapterOutline?.visualSymbol
+    ? `\n> 本章核心【画面隐喻】已锚定：「${visualSymbol}」。请在开篇、中段、结尾各出现一次该符号的变奏——让读者潜意识中形成意象闭环。`
+    : `\n> 请你在构思时先确定本章核心【画面隐喻】（一个具体的物或自然现象），然后在开篇、中段、结尾各出现一次它的变奏。`;
 
-# 主角成长阶段
-当前处于 **阶段${stageId}/5：${stageInfo.name}** — ${stageInfo.desc}
-你必须在本章中忠实体现这一阶段的情绪基调和心理状态。
+  // ── 信息差 ──
+  const godView = chapterOutline?.informationAsymmetry?.godView || '（由你根据本章冲突自由设定：读者此时应该知道什么主角不知道的事？）';
+  const blindSpot = chapterOutline?.informationAsymmetry?.blindSpot || '（由你自由设定：主角因为什么认知盲区正在走向危险？）';
+  const asymmetryBlock = `\n> 本章【信息差】已锁定：上帝视角 — ${godView} / 认知盲区 — ${blindSpot}。在行文中持续制造"快看后面！"的焦虑感。`;
 
-# 前一章最后400字（必须无缝衔接）
-${prevTail || '（这是第一章，无需衔接）'}
+  // ── 行业纵深 ──
+  const industryBlock = chapterOutline?.industryLore?.length
+    ? `\n> 本章必须自然融入以下 ${chapterOutline.industryLore.length} 个垂直术语/职业黑话（不要生硬解释，让它们像呼吸一样出现在叙事中）：${chapterOutline.industryLore.join('、')}`
+    : '';
 
-# 本章信息
-- 标题：${title}
-- 概要：${summary}
-- 章节序号：第 ${chapterIndex + 1}/${totalChapters} 章
+  // ── 断崖卡点 ──
+  const cliffhangerBlock = chapterOutline?.cliffhangerPoint
+    ? `\n> 🪓 本章结尾强制断崖点：「${chapterOutline.cliffhangerPoint}」— 必须在这里戛然而止！禁止继续往下写！禁止交代后续！`
+    : '\n> 🪓 本章结尾必须在戏剧冲突最高的刀刃上戛然而止——一个未完成的决定、突然出现的威胁、或颠覆认知的发现。禁止把剧情交代完！';
+
+  // ── DeepSeek 风格指标 ──
+  const uiMetricsBlock = chapterOutline?.uiMetrics
+    ? `\n- 时态锚定：${chapterOutline.uiMetrics.timeDimension || '继承上文'} | 语言指纹：${chapterOutline.uiMetrics.tokenFingerprint || '保持一致性'} | 场景张力：${chapterOutline.uiMetrics.situationalInference || '自然推进'}`
+    : '';
+
+  return `## 🎭 角色设定
+你是一位深刻理解读者心理、文字极具画面感与情感张力的顶级网络小说巨匠。你深谙长短句节奏控制与"Show, Don't Tell"原则，能够产出高留存率、高吸引力的小说。
+
+## 🧠 DeepSeek 思考逻辑约束（动笔前在内心规划）
+1. 本章最核心的【画面隐喻】是什么？${visualSymbolBlock}
+2. 读者和角色之间的【信息差】在哪里？${asymmetryBlock}
+3. 本章结尾的【断崖式悬念（Cliffhanger）】停在哪一秒？${cliffhangerBlock}
 
 ---
 
-# 硬核写作五步法
+## 🧭 核心创作原则
 
-## 第一步：模式与成长阶段适配
-根据「${modeInfo.name}」的叙事密度和「${stageInfo.name}」的情感强度，决定本章节奏与张力水平。
+**1. 画面代替叙述（Show, Don't Tell）：**
+坚决拒绝直接使用"他很伤心"、"场面很恐怖"等抽象形容词。请通过角色的生理本能反应（如：喉结滚了滚、指甲掐进肉里、呼吸一滞）或富有情绪暗示的道具/环境（如：深夜窗台上死掉的飞蛾、一杯冒着冷汗的冰水）来让读者自己去感受。
 
-## 第二步：硬核叙事工程
-- **黄金钩子**：开篇前300字必须是强烈感官细节或危机现场。用视觉/听觉/触觉/嗅觉/味觉立刻抓人。
-- **信息差**：让读者知道危险，而主角因盲区犯错。制造"快看后面！"的焦虑感。
-- **呼吸节奏**：铺垫用长句细腻渲染氛围，冲突用短句凌厉推进。对话穿插动作，避免纯对白。
+**2. 长短句呼吸控制：**
+日常铺垫、环境细描、行业内幕交代时，用富有韵律的长句子，拉长文学空间；一旦进入冲突爆发、动作交锋、心理惊悚或章节末尾时，瞬间切换为凌厉、干净的短句。控制读者的心跳节奏。
+- 当前风格参考：${chapterOutline?.uiMetrics?.tokenFingerprint || modeInfo.density}
 
-## 第三步：文本铁律（零违反）
-- **Show, Don't Tell**：不准写"他很愤怒"。要写"指节攥得发白，喉结上下滚动，声音从牙缝里挤出来"。
-- **台词有潜台词**：每句对话都有表面的意思和真实的意思，符合人物身份和当下情绪。
-- **硬核细节**：自然融入2-3个行业/世界观细节，让世界有质感。
+**3. 对话潜台词：**
+角色对话必须符合其身份、职业和阶层。严禁直白说教，台词要充满推拉和留白，说话永远只表露内心真实意图的30%，剩下的70%让读者通过线索去猜。
 
-## 第四步：时间线与成长记录
-- 严格保持时间线逻辑自洽（不要出现前后几天的事件矛盾）。
-- 本章主角必须体现阶段「${stageInfo.name}」对应的心理状态。
+---
 
-## 第五步：断崖式结尾
-- 章节最后一句话停在刀刃上：一个未完成的决定、一个突然出现的威胁、一个颠覆认知的发现。
-- 让读者必须点下一章。
+## 🗺️ 篇幅与结构路由
+${lengthRouting}
+${industryBlock}
+
+---
+
+## 🎬 章节创作黄金四步（严格执行）
+
+**【第一步：章首钩子】**
+承接上文。前300字内严禁大段背景交代，必须直接从一个有张力的画面、一句有深意的台词或突发冲突开始。${chapterOutline?.plotFlow?.hook ? `\n大纲指定钩子方向：「${chapterOutline.plotFlow.hook}」` : ''}
+
+**【第二步：多线推进】**
+利用"信息差"制造悬念——让读者知道危险在靠近，而主角浑然不觉。过程中丝滑融入该题材垂直领域的硬核细节，展现惊人的专业质感。${chapterOutline?.plotFlow?.pressure ? `\n大纲指定压力升级路径：「${chapterOutline.plotFlow.pressure}」` : ''}
+
+**【第三步：压力升级】**
+让矛盾在本章中后段达到一个小高潮，将压力逼近临界点。${chapterOutline?.plotFlow?.climax ? `\n大纲指定最高燃点：「${chapterOutline.plotFlow.climax}」` : ''}
+
+**【第四步：断崖式结尾 — 🛑 最高死命令！】**
+必须把剧情停在刀刃上（例如：秘密即将被撞破的前一秒、子弹开火的前一刻）。严禁在章末做大道理总结！用绝对的悬念逼迫读者点击"下一章"！
+
+---
+
+## 📥 用户输入带入槽
+- 故事题目：${novelTitle || '（见下方标题）'}
+- 小说题材：${genre || '未知'}
+- 核心冲突/本章梗概：${summary || '（参考大纲自由发挥）'}
+- 全局大纲背景：${outline || '参考梗概'}
+- 主角信息：${protagonist || '待补充'}
+- 完整框架背景：${novelFrameworkContext || '无框架'}
+- 当前场景/位置：${location || '待补充'}
+- 伏笔备注/记忆：${memoryNotes || '无'}
+${uiMetricsBlock ? `- 📊 DeepSeek 风格指标：${uiMetricsBlock}` : ''}
+
+---
+
+## 📖 本章具体信息
+- 章节标题：${title}
+- 章节序号：第 ${chapterIndex + 1}/${totalChapters} 章
+- 字数目标：1200-1800字
+- 成长阶段：阶段${stageId}/5 — ${stageInfo.name}（${stageInfo.desc}）
+- 写作模式：${modeInfo.name}（${modeInfo.density}）
+
+---
+
+## 📄 前一章最后400字（必须无缝衔接）
+${prevTail || '（这是第一章，无需衔接）'}
+
+---
+
+## 🚫 绝对禁止（违反即判定失败）
+- 禁止"全场震惊""众人哗然""所有人倒吸凉气""脸色一变""瞳孔一缩"
+- 禁止"这就是XX的力量吗""此子不可留""有意思"等套路台词
+- 禁止主角无来由碾压对手、禁止"远古XX血脉""上古XX传承"
+- 禁止在章末做任何大道理总结或抒情展望
+- 禁止把剧情交代完——必须停在刀刃上！
+
+---
+
+## ✅ 强制要求
+1. 正文第一个字必须是小说正文的第一个字——不要写标题、章节号、markdown
+2. 对话占比不低于30%，每句对话有潜台词（表面意思 ≠ 真实意思）
+3. 每600字至少一个小冲突或情绪转折
+4. 字数：1200-1800字
+5. 严格延续上一章最后400字的语气、情节线和主角心理状态
+6. 本章必须忠实体现阶段「${stageInfo.name}」对应的情绪基调和心理状态
+7. 用独特的感官细节替代模板化表达，让每个场景有真实的质感
+8. 画面隐喻「${visualSymbol}」必须在开篇、中段、结尾各出现一次（变奏重复）
 
 ---
 
@@ -142,19 +332,7 @@ ${prevTail || '（这是第一章，无需衔接）'}
 
 ---
 
-# 禁止事项（违反即失败）
-- 禁止"全场震惊""所有人倒吸凉气""众人哗然"
-- 禁止"脸色一变""瞳孔一缩""倒吸一口冷气"等模板化反应
-- 禁止"这就是XX的力量吗""此子不可留"等套路台词
-- 禁止主角无来由碾压对手
-
-# 强制要求
-1. 正文第一个字必须是小说正文的第一个字——不要写标题、章节号、markdown
-2. 对话占比不低于30%，每句对话有潜台词
-3. 每600字至少一个小冲突或情绪转折
-4. 字数：1200-1800字
-5. 严格延续上一章最后400字的语气、情节线和主角心理状态
-6. 用独特的感官细节替代模板化表达，让每个场景有真实的质感`;
+开始写作——记住：第一个字就是正文，停在刀刃上。`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -203,8 +381,9 @@ export function buildNextChapterPrompt(params: {
   protagonist: string;
   outline: string;
   globalMemory: string;
+  novelFrameworkContext?: string;
 }): string {
-  const { nextTitle, nextSummary, prevChapterContent, chapterIndex, totalChapters, writeMode, genre, protagonist, outline, globalMemory } = params;
+  const { nextTitle, nextSummary, prevChapterContent, chapterIndex, totalChapters, writeMode, genre, protagonist, outline, globalMemory, novelFrameworkContext } = params;
   const stageId = getStageForChapter(chapterIndex, totalChapters, writeMode);
   const stageInfo = GROWTH_STAGES.find((s) => s.id === stageId) || GROWTH_STAGES[0];
   const modeInfo = WRITE_MODES.find((m) => m.id === writeMode) || WRITE_MODES[0];
@@ -218,6 +397,7 @@ export function buildNextChapterPrompt(params: {
 - 主角：${protagonist || '未知'}
 - 大纲：${outline || '参考梗概'}
 - 记忆：${globalMemory || '暂无'}
+- 框架背景：${novelFrameworkContext || '无框架'}
 
 # 成长阶段
 当前处于 **阶段${stageId}/5：${stageInfo.name}** — ${stageInfo.desc}
