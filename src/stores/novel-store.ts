@@ -1,15 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Novel, Chapter, Character, WorldSetting, Protagonist, TimelineNode, MemoryEntry, GenerationOutline, ApiConfig, PipelineStage, NovelFramework, FrameworkVolume, VolumeChapter } from '@/types';
+import type { Novel, Chapter, Character, WorldSetting, Protagonist, TimelineNode, MemoryEntry, GenerationOutline, ApiConfig, GitHubConfig, PipelineStage, NovelFramework, FrameworkVolume, VolumeChapter } from '@/types';
 import { generateId } from '@/lib/utils';
 
 interface NovelState {
   novels: Novel[];
   currentNovelId: string | null;
   apiConfig: ApiConfig;
+  githubConfig: GitHubConfig;
 
   // API config
   setApiConfig: (config: Partial<ApiConfig>) => void;
+  setGithubConfig: (config: Partial<GitHubConfig>) => void;
 
   // Novel CRUD
   createNovel: (data: Pick<Novel, 'title' | 'subtitle' | 'author' | 'description' | 'genre' | 'coverColor'>) => string;
@@ -75,9 +77,16 @@ export const useNovelStore = create<NovelState>()(
         key: '',
         model: 'deepseek-v3',
       },
+      githubConfig: {
+        token: '',
+        owner: '',
+        repo: '',
+      },
 
       setApiConfig: (config) =>
         set((s) => ({ apiConfig: { ...s.apiConfig, ...config } })),
+      setGithubConfig: (config) =>
+        set((s) => ({ githubConfig: { ...s.githubConfig, ...config } })),
 
       createNovel: (data) => {
         const id = generateId();

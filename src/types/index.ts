@@ -189,6 +189,12 @@ export interface ApiConfig {
   model: string;
 }
 
+export interface GitHubConfig {
+  token: string;
+  owner: string;
+  repo: string;
+}
+
 export interface Novel {
   id: string;
   title: string;

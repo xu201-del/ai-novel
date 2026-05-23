@@ -6,7 +6,7 @@ import { useUIStore } from '@/stores/ui-store';
 import { cn } from '@/lib/utils';
 import {
   BookOpen, PanelLeftClose, PanelLeft, PanelRightClose, PanelRight,
-  Settings, Key, Check, X,
+  Settings, Key, Check, X, Upload, Loader2, GitBranch,
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 
@@ -28,6 +28,8 @@ export default function TopNav() {
   const currentNovel = useNovelStore((s) => s.currentNovel());
   const apiConfig = useNovelStore((s) => s.apiConfig);
   const setApiConfig = useNovelStore((s) => s.setApiConfig);
+  const githubConfig = useNovelStore((s) => s.githubConfig);
+  const setGithubConfig = useNovelStore((s) => s.setGithubConfig);
   const leftSidebarOpen = useUIStore((s) => s.leftSidebarOpen);
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
   const toggleLeftSidebar = useUIStore((s) => s.toggleLeftSidebar);
@@ -35,10 +37,36 @@ export default function TopNav() {
   const [showSettings, setShowSettings] = useState(false);
   const [tempKey, setTempKey] = useState(apiConfig.key);
   const [tempModel, setTempModel] = useState(apiConfig.model);
+  const [tempGHToken, setTempGHToken] = useState(githubConfig.token);
+  const [tempGHOwner, setTempGHOwner] = useState(githubConfig.owner);
+  const [tempGHRepo, setTempGHRepo] = useState(githubConfig.repo);
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState('');
 
   const handleSaveSettings = () => {
     setApiConfig({ key: tempKey, model: tempModel });
+    setGithubConfig({ token: tempGHToken, owner: tempGHOwner, repo: tempGHRepo });
     setShowSettings(false);
+  };
+
+  const handleExport = async () => {
+    if (!currentNovel || !githubConfig.token || !githubConfig.owner || !githubConfig.repo) {
+      setExportMsg('请先在设置中配置 GitHub Token、Owner 和 Repo');
+      return;
+    }
+    setExporting(true);
+    setExportMsg('');
+    try {
+      const { exportNovelToGitHub } = await import('@/services/github-export');
+      await exportNovelToGitHub(githubConfig, currentNovel, (current, total, path) => {
+        setExportMsg(`上传中 (${current}/${total}): ${path}`);
+      });
+      setExportMsg('导出完成！');
+    } catch (err: unknown) {
+      setExportMsg(err instanceof Error ? err.message : '导出失败');
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (!mounted) {
@@ -86,13 +114,33 @@ export default function TopNav() {
 
         <div className="flex items-center gap-1">
           <button
-            onClick={() => { setTempKey(apiConfig.key); setTempModel(apiConfig.model); setShowSettings(!showSettings); }}
+            onClick={() => { setTempKey(apiConfig.key); setTempModel(apiConfig.model); setTempGHToken(githubConfig.token); setTempGHOwner(githubConfig.owner); setTempGHRepo(githubConfig.repo); setShowSettings(!showSettings); }}
             className={cn('btn-ghost px-2', !apiConfig.key && 'text-[var(--color-accent)]')}
             title="API 设置"
           >
             <Settings size={16} />
             {!apiConfig.key && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] absolute top-1 right-1" />}
           </button>
+          {currentNovel && (
+            <div className="relative flex items-center">
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="btn-ghost px-2"
+                title="导出到 GitHub"
+              >
+                {exporting ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+              </button>
+              {exportMsg && (
+                <span className={cn(
+                  'absolute top-full right-0 mt-1 text-[9px] whitespace-nowrap px-2 py-0.5 rounded-[var(--radius-sm)] animate-fade-in',
+                  exportMsg.includes('完成') ? 'text-[var(--color-green)] bg-[var(--color-green-bg)]' : 'text-[var(--color-text-dim)] bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)]',
+                )}>
+                  {exportMsg}
+                </span>
+              )}
+            </div>
+          )}
           <ThemeToggle />
           <button onClick={toggleRightPanel} className="btn-ghost px-2">
             {rightPanelOpen ? <PanelRightClose size={16} /> : <PanelRight size={16} />}
@@ -137,6 +185,47 @@ export default function TopNav() {
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="border-t border-[var(--color-border-secondary)] pt-3 mt-1">
+                <div className="flex items-center gap-2 mb-3">
+                  <GitBranch size={14} className="text-[var(--color-text-dim)]" />
+                  <h4 className="text-xs font-medium text-[var(--color-text-secondary)]">GitHub 导出</h4>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[10px] text-[var(--color-text-muted)] mb-0.5">Personal Access Token</label>
+                    <input
+                      type="password"
+                      value={tempGHToken}
+                      onChange={(e) => setTempGHToken(e.target.value)}
+                      placeholder="ghp_..."
+                      className="input-field text-xs"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-[var(--color-text-muted)] mb-0.5">Owner</label>
+                      <input
+                        type="text"
+                        value={tempGHOwner}
+                        onChange={(e) => setTempGHOwner(e.target.value)}
+                        placeholder="GitHub 用户名"
+                        className="input-field text-xs"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-[var(--color-text-muted)] mb-0.5">Repo</label>
+                      <input
+                        type="text"
+                        value={tempGHRepo}
+                        onChange={(e) => setTempGHRepo(e.target.value)}
+                        placeholder="仓库名"
+                        className="input-field text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-1">
