@@ -906,7 +906,6 @@ export default function ChapterEditor() {
               'writer-prose',
               isGenerating && activeAction === 'generate' ? 'opacity-50' : '',
               'cursor-text',
-              '[&_p]:mb-[0.3em]'
             )}
             dangerouslySetInnerHTML={{ __html: renderContentToHtml(localContent, aiSegments.length > 0 ? aiSegments : undefined) }}
           />
