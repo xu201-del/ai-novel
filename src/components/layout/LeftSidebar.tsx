@@ -474,6 +474,8 @@ function OutlineTab({ novel, onChapterClick }: {
           isDeducing={isDeducing}
           deduceErrors={deduceErrors}
           hasApiKey={hasApiKey}
+          novelChapters={sortedChapters}
+          onChapterClick={onChapterClick}
           onToggleController={toggleController}
           onCountChange={handleCountChange}
           onDeduce={handleDeduce}
@@ -522,7 +524,7 @@ function OutlineTab({ novel, onChapterClick }: {
 // ─── 篇级大纲目录树 ──────────────────────────────────────
 function VolumeTreeSection({
   volumes, volumeChapters, controllerOpen, chapterCounts, overflowFlags,
-  isDeducing, deduceErrors, hasApiKey, onToggleController, onCountChange, onDeduce,
+  isDeducing, deduceErrors, hasApiKey, novelChapters, onChapterClick, onToggleController, onCountChange, onDeduce,
   showAddVolume, addVolumeMode, newVolume, aiHint, aiGenerating, aiError,
   onShowAddVolume, onAddVolumeMode, onNewVolumeChange, onAiHintChange,
   onAddManual, onAddAI, onDeleteVolume,
@@ -535,6 +537,8 @@ function VolumeTreeSection({
   isDeducing: Record<string, boolean>;
   deduceErrors: Record<string, string>;
   hasApiKey: boolean;
+  novelChapters: Chapter[];
+  onChapterClick: (chId: string) => void;
   onToggleController: (id: string) => void;
   onCountChange: (id: string, val: string) => void;
   onDeduce: (id: string, volume: FrameworkVolume) => void;
@@ -576,6 +580,8 @@ function VolumeTreeSection({
             isDeducing={!!isDeducing[vol.id]}
             deduceError={deduceErrors[vol.id] ?? ''}
             hasApiKey={hasApiKey}
+            novelChapters={novelChapters}
+            onChapterClick={onChapterClick}
             onToggleController={() => onToggleController(vol.id)}
             onCountChange={(v) => onCountChange(vol.id, v)}
             onDeduce={() => onDeduce(vol.id, vol)}
@@ -740,7 +746,7 @@ function VolumeTreeSection({
 // ─── 单个篇节点 — 卷级控制器 + 章列表 ──────────────────
 function VolumeNode({
   volume, chapters, controllerOpen, chapterCount, isOverflow, isDeducing, deduceError, hasApiKey,
-  onToggleController, onCountChange, onDeduce, onDeleteVolume,
+  novelChapters, onChapterClick, onToggleController, onCountChange, onDeduce, onDeleteVolume,
 }: {
   volume: FrameworkVolume;
   chapters: VolumeChapter[];
@@ -750,6 +756,8 @@ function VolumeNode({
   isDeducing: boolean;
   deduceError: string;
   hasApiKey: boolean;
+  novelChapters: Chapter[];
+  onChapterClick: (chId: string) => void;
   onToggleController: () => void;
   onCountChange: (val: string) => void;
   onDeduce: () => void;
@@ -762,6 +770,12 @@ function VolumeNode({
   useEffect(() => {
     if (hasChapters) setExpanded(true);
   }, [hasChapters]);
+
+  const handleChapterClick = (deducedIndex: number) => {
+    const order = volume.chapterRange[0] + deducedIndex;
+    const target = novelChapters.find((c) => c.order === order);
+    if (target) onChapterClick(target.id);
+  };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') onDeduce();
@@ -939,15 +953,16 @@ function VolumeNode({
           <div className="border-t border-[var(--color-border-secondary)] bg-[var(--color-bg-tertiary)]/30">
             <div className="px-1 py-1 space-y-0">
               {chapters.map((ch, i) => (
-                <div
+                <button
                   key={ch.id}
-                  className="group/ch flex items-start gap-2 px-1.5 py-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--color-bg-hover)] transition-colors duration-200"
+                  onClick={() => handleChapterClick(i)}
+                  className="group/ch flex items-start gap-2 px-1.5 py-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--color-bg-hover)] transition-colors duration-200 w-full text-left cursor-pointer"
                 >
                   <span className="text-[9px] font-mono text-[var(--color-text-dim)] mt-0.5 shrink-0 w-5 text-right">
                     {i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium text-[var(--color-text-primary)] truncate leading-tight">
+                    <p className="text-[11px] font-medium text-[var(--color-text-primary)] truncate leading-tight group-hover/ch:text-[var(--color-accent)] transition-colors">
                       {ch.chapterTitle}
                     </p>
                     <p className="text-[10px] text-[var(--color-text-dim)] truncate leading-relaxed mt-0.5">
@@ -959,7 +974,7 @@ function VolumeNode({
                       </p>
                     )}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
