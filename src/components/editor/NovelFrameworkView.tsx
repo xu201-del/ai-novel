@@ -170,6 +170,9 @@ function DeducedChapterCard({ chapter, index }: { chapter: VolumeChapter; index:
               </span>
             </div>
           )}
+          <span className="inline-block mt-1.5 text-[9px] text-[var(--color-text-dim)]/50">
+            ~{(chapter.wordCountPreset ?? 3000).toLocaleString()}字
+          </span>
         </div>
       </div>
     </div>

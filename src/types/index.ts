@@ -136,6 +136,7 @@ export interface VolumeChapter {
   chapterTitle: string;
   microPlot: string;
   cliffhangerPoint: string;
+  wordCountPreset: number;
 }
 
 // ═══════════════════════════════════════════════════════════

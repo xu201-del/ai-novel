@@ -17,6 +17,7 @@ import type { FrameworkVolume } from '@/types/novel-framework';
 import { PIPELINE_STAGES } from '@/types';
 import CreateNovelDialog from '@/components/novel/CreateNovelDialog';
 import { deduceChapters } from '@/services/volume-deduce';
+import type { DeduceContext } from '@/services/volume-deduce';
 
 const COVER_PALETTE = ['#d4a44c', '#e0556a', '#4caf90', '#5c9ce6', '#7c7cf8', '#e08d3b', '#c462a0', '#52b9c0'];
 
@@ -370,8 +371,12 @@ function OutlineTab({ novel, onChapterClick }: {
   const volumes: FrameworkVolume[] = novel.novelFramework?.volumes ?? [];
   const volumeChapters = novel.volumeChapters ?? {};
   const hasFrameworkVolumes = volumes.length > 0;
-  const inspiration = novel.inspirationText || novel.description || '';
-  const tropeTag = novel.tropeTag || '';
+  const deduceCtx: DeduceContext = {
+    bookTitle: novel.title,
+    expectedWords: novel.targetWords ? `${novel.targetWords}字` : '待定',
+    tags: novel.tropeTag || novel.genre || '请根据灵感自行判断',
+    inspiration: novel.inspirationText || novel.description || '',
+  };
 
   const toggleController = useCallback((volumeId: string) => {
     setControllerOpen((prev) => ({ ...prev, [volumeId]: !prev[volumeId] }));
@@ -419,7 +424,7 @@ function OutlineTab({ novel, onChapterClick }: {
 
     setIsDeducing((prev) => ({ ...prev, [volumeId]: true }));
     try {
-      const chapters = await deduceChapters(apiConfig, inspiration, tropeTag, volume, safeCount, controller.signal);
+      const chapters = await deduceChapters(apiConfig, deduceCtx, volume, safeCount, controller.signal);
       setVolumeChapters(novel.id, volumeId, chapters);
       setControllerOpen((prev) => { const n = { ...prev }; delete n[volumeId]; return n; });
     } catch (err: unknown) {
@@ -429,7 +434,7 @@ function OutlineTab({ novel, onChapterClick }: {
     } finally {
       setIsDeducing((prev) => { const n = { ...prev }; delete n[volumeId]; return n; });
     }
-  }, [apiConfig, inspiration, tropeTag, chapterCounts, setVolumeChapters, novel.id]);
+  }, [apiConfig, deduceCtx, chapterCounts, setVolumeChapters, novel.id]);
 
   const sortedChapters = [...novel.chapters].sort((a, b) => a.order - b.order);
 
@@ -973,6 +978,9 @@ function VolumeNode({
                         ⚡ {ch.cliffhangerPoint}
                       </p>
                     )}
+                    <span className="text-[8px] text-[var(--color-text-dim)]/50 mt-0.5 inline-block">
+                      ~{(ch.wordCountPreset ?? 3000).toLocaleString()}字
+                    </span>
                   </div>
                 </button>
               ))}

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// 篇内自定义细化章节 — 局部算力推演 Prompt 与 API 适配器
+// 篇章裂变引擎 — 篇级大纲 → 章节目录骨架 同步推演
 // ═══════════════════════════════════════════════════════════
 import { fetchAI, parseJSONFromText } from './api';
 import type { ApiConfig } from '@/types';
@@ -7,83 +7,86 @@ import type { FrameworkVolume } from '@/types/novel-framework';
 import { generateId } from '@/lib/utils';
 import type { VolumeChapter } from '@/types';
 
+export interface DeduceContext {
+  bookTitle: string;
+  expectedWords: string;
+  tags: string;
+  inspiration: string;
+}
+
 export function buildVolumeDeducePrompt(
-  inspiration: string,
-  tropeTag: string,
+  ctx: DeduceContext,
   volume: FrameworkVolume,
   count: number,
 ): string {
-  const genreHint = tropeTag
-    ? `流派类型：${tropeTag}（章节标题需精准贴合该流派的读者期待感）`
-    : '流派类型：请根据灵感文本自行判断最具商业价值的网文流派';
+  return `# Role: InkFlow Pro 顶级网络小说架构师 (篇章裂变引擎)
 
-  return `# 角色设定
-你是中国顶级网文平台的"金榜大纲策划师"——你拆解的章节目录能让读者在番茄小说上逐章追读到凌晨三点。你的章名有钩子感，剧情概述让人一眼就想点进去。
+## Task
+根据用户的初始灵感和赛道标签，进行【篇级大纲】与【章节目录骨架】的同步并发解耦设计。
 
-# 核心任务
-为当前【篇】拆解出恰好 ${count} 个章节，每个章节必须是一个独立的叙事钩子。
+## Operational Constraints
+1. **宏观控卷（Volume-Nested）**：必须采用"篇/卷（Volume）"作为最顶层的数据层级。每一篇必须具备明确的【核心冲突】和【卷末大结局走向】。
+2. **微观控章（Chapter Fingerprint）**：
+   - Show, Don't Tell 铁律：梗概必须充斥具体的动作、线索、道具或反转，严禁出现"主角展现了聪明才智"、"双方发生激战"等干瘪总结。
+   - 断崖式结尾引擎（Cliffhanger Point）：每章结尾必须卡在危机引爆、秘密揭开的前一秒，疯狂拉动读者追读欲望。
 
-# 📖 小说核心灵感
-${inspiration || '（未提供，请根据篇信息自由发挥）'}
+## Inputs
+<novel_meta>
+- 书名: ${ctx.bookTitle}
+- 预期总字数: ${ctx.expectedWords}
+- 赛道标签: ${ctx.tags}
+- 初始创作灵感: ${ctx.inspiration}
+</novel_meta>
 
-# 🏷️ 流派定位
-${genreHint}
+<generation_target>
+- 目标推演篇名: ${volume.title}
+- 本篇核心冲突范围: ${volume.mainConflict}
+- 目标生成章数: ${count}
+</generation_target>
 
-# 📗 当前篇信息
-- **篇名**：${volume.title}
-- **叙事弧线**：${volume.arc}
-- **篇章主题**：${volume.theme}
-- **篇章概要**：${volume.synopsis}
-- **核心冲突**：${volume.mainConflict}
-- **篇末高潮**：${volume.volumeEnding}
-- **章节范围**：第 ${volume.chapterRange[0]} 章 ~ 第 ${volume.chapterRange[1]} 章
+## Output Format Specification
+必须严格返回以下 JSON 格式的数组，不要包含任何 Markdown 标记（不要用 \`\`\`json 包裹）、不要包含任何前后废话导言。
 
-# 🛑 拆解铁律
-1. 每个章名必须自带信息差钩子——读者看到名字就产生"这是怎么回事？"的好奇心
-2. 章节剧情必须逐章递进——前一章的结尾埋下后一章的动机
-3. 篇末最后 ${Math.min(3, count)} 章必须加速推向高潮，制造篇末超燃断崖
-4. 章名风格参考：拒绝"第X章"式平淡命名；必须有动作、悬念、反转、爽感中的至少两种情绪抓手
-
-# 📤 输出格式
-返回恰好 ${count} 个元素的纯净 JSON 数组。字段严格如下：
 [
   {
-    "chapterTitle": "带有流派质感的章/节名称（15字以内，拒绝平淡标题）",
-    "microPlot": "本章极简剧情（50字以内，点明核心冲突推进点与情绪峰值）",
-    "cliffhangerPoint": "本章断崖结尾点（30字以内，描述在哪个致命瞬间戛然而止，让读者必须点开下一章）"
+    "chapterTitle": "第 X 章：[4-6字极具网文张力的章名]",
+    "microPlot": "[150字左右的精准单章梗概，包含具体事件、动作流、信息差演进]",
+    "cliffhangerPoint": "[30字内的钩子，卡在剧情情绪最高潮瞬间]",
+    "wordCountPreset": 3000
   }
 ]
 
-仅输出 JSON 数组，不要任何说明文字。`;
+## Execution
+立即开始为第 "${volume.title}" 推演精确的 ${count} 个章节大纲：`;
 }
 
 export async function deduceChapters(
   apiConfig: ApiConfig,
-  inspiration: string,
-  tropeTag: string,
+  ctx: DeduceContext,
   volume: FrameworkVolume,
   count: number,
   signal?: AbortSignal,
 ): Promise<VolumeChapter[]> {
-  const prompt = buildVolumeDeducePrompt(inspiration, tropeTag, volume, count);
-  const raw = await fetchAI({ prompt, maxTokens: 4096, apiConfig, signal });
+  const prompt = buildVolumeDeducePrompt(ctx, volume, count);
+  const raw = await fetchAI({ prompt, maxTokens: 8192, apiConfig, signal });
   const parsed = parseJSONFromText(raw);
 
   if (!Array.isArray(parsed)) {
-    const fallback = tryHeuristicParse(raw, count, volume.id);
+    const fallback = tryHeuristicParse(raw, count);
     if (fallback) return fallback;
     throw new Error('AI 返回格式异常，请重试');
   }
 
   return parsed.slice(0, count).map((item: Record<string, unknown>, i: number) => ({
     id: generateId(),
-    chapterTitle: String(item.chapterTitle || `第${volume.chapterRange[0] + i}章`).slice(0, 50),
-    microPlot: String(item.microPlot || '').slice(0, 100),
+    chapterTitle: String(item.chapterTitle || `第${i + 1}章`).slice(0, 60),
+    microPlot: String(item.microPlot || '').slice(0, 200),
     cliffhangerPoint: String(item.cliffhangerPoint || '').slice(0, 60),
+    wordCountPreset: typeof item.wordCountPreset === 'number' ? item.wordCountPreset : 3000,
   }));
 }
 
-function tryHeuristicParse(raw: string, count: number, volumeId: string): VolumeChapter[] | null {
+function tryHeuristicParse(raw: string, count: number): VolumeChapter[] | null {
   const lines = raw
     .split('\n')
     .map((l) => l.trim())
@@ -91,13 +94,14 @@ function tryHeuristicParse(raw: string, count: number, volumeId: string): Volume
 
   const chapters: VolumeChapter[] = [];
   for (const line of lines) {
-    const match = line.match(/^[\d.]+[、.\s]*[「「《]?(.{2,40})[」」》]?\s*[-–—:\s]+(.{4,100})/);
+    const match = line.match(/^[\d.]+[、.\s]*[「「《]?(.{2,60})[」」》]?\s*[-–—:\s]+(.{4,200})/);
     if (match) {
       chapters.push({
         id: generateId(),
-        chapterTitle: match[1].slice(0, 50),
-        microPlot: match[2].slice(0, 100),
+        chapterTitle: match[1].slice(0, 60),
+        microPlot: match[2].slice(0, 200),
         cliffhangerPoint: '',
+        wordCountPreset: 3000,
       });
     }
   }
