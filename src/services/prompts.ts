@@ -336,6 +336,54 @@ ${prevTail || '（这是第一章，无需衔接）'}
 }
 
 // ═══════════════════════════════════════════════════════════
+//  正文并发表绎引擎 — 殿堂级主笔 Prompt
+//  基于篇章裂变引擎的微蓝图，产出极具网文质感的正文章节
+// ═══════════════════════════════════════════════════════════
+export function buildChapterBodyPrompt(params: {
+  activeVolumeTitle: string;
+  activeVolumeEnding: string;
+  activeChapterTitle: string;
+  activeChapterPlot: string;
+  activeChapterCliffhanger: string;
+  lastChapterText: string;
+}): string {
+  const { activeVolumeTitle, activeVolumeEnding, activeChapterTitle, activeChapterPlot, activeChapterCliffhanger, lastChapterText } = params;
+
+  return `# Role: InkFlow Pro 殿堂级网络小说主笔 (正文并发表绎引擎)
+
+## Task
+执行正文高控编织任务。请读取当前章节的大纲线索，结合前文剧情，输出极具网文质感、画面硬度与戏剧张力的网文正文。
+
+## Executing Constraints
+1. **文风锁死（呼吸感节奏）**：句子要短、要有压迫感。善用单字成行、短句成段（参考：青铜碎片在跳动。/ 像心脏。/ 不是她的血。/ 是他的。）。严禁大段旁白解释。
+2. **大纲对齐度 100%**：正文发展的核心路线必须完美契合 \`${activeChapterPlot}\`。
+3. **断崖死锁（The Deadlock Cut）**：本次生成的最后 100 字，必须强行刹车在 \`${activeChapterCliffhanger}\` 指定的断崖点上。不要解决危机，在冲突最高潮处戛然而止。
+
+## Contextual State Lock
+<macro_framework>
+- 当前篇名: ${activeVolumeTitle}
+- 本篇大结局走向: ${activeVolumeEnding}
+</macro_framework>
+
+<micro_blueprint>
+- 当前要写的章节: ${activeChapterTitle}
+- 本章大纲梗概指引: ${activeChapterPlot}
+- 本章强制断崖点（结尾钩子）: ${activeChapterCliffhanger}
+</micro_blueprint>
+
+<historical_text_stream>
+- 前文最后500字剧情承接:
+${lastChapterText || '（这是第一章，无前文）'}
+</historical_text_stream>
+
+## Output Format Specification
+直接输出排版好的正文小说文本。严禁包含任何"好的，以下是为您生成的正文"等废话，直接以正文第一句开始输出。
+
+## Execution
+现在开始编织 ${activeChapterTitle} 的正文：`;
+}
+
+// ═══════════════════════════════════════════════════════════
 //  续写 Prompt — 从当前正文末尾接续
 // ═══════════════════════════════════════════════════════════
 export function buildContinuePrompt(params: {

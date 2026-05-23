@@ -5,7 +5,7 @@ import { useNovelStore } from '@/stores/novel-store';
 import { useUIStore } from '@/stores/ui-store';
 import { fetchAIStream } from '@/services/api';
 import {
-  buildChapterPrompt, buildContinuePrompt,
+  buildChapterPrompt, buildChapterBodyPrompt, buildContinuePrompt,
   buildNextChapterPrompt, buildRewritePrompt,
 } from '@/services/prompts';
 import { GROWTH_STAGES, getStageForChapter } from '@/services/writing-framework';
@@ -451,7 +451,15 @@ export default function ChapterEditor() {
     setGenerationError(null);
 
     try {
-      const prevTail = currentChapter.content.slice(-400);
+      const prevTail = currentChapter.content.slice(-500);
+
+      // ── 尝试匹配篇章裂变引擎的微蓝图 ──
+      const fw = currentNovel.novelFramework;
+      const currentVolume = fw?.volumes?.find(
+        (v) => currentIndex + 1 >= v.chapterRange[0] && currentIndex + 1 <= v.chapterRange[1],
+      );
+      const deducedChapters = currentVolume ? (currentNovel.volumeChapters?.[currentVolume.id] ?? []) : [];
+      const deducedChapter = deducedChapters[currentIndex + 1 - (currentVolume?.chapterRange[0] ?? 1)];
 
       // 提取当前章节的大纲子框架
       const outlineChapter = currentNovel.generationOutline?.chapters?.[currentIndex];
@@ -467,7 +475,16 @@ export default function ChapterEditor() {
           }
         : undefined;
 
-      const prompt = buildChapterPrompt({
+      const prompt = deducedChapter && currentVolume
+        ? buildChapterBodyPrompt({
+            activeVolumeTitle: currentVolume.title,
+            activeVolumeEnding: currentVolume.volumeEnding,
+            activeChapterTitle: deducedChapter.chapterTitle,
+            activeChapterPlot: deducedChapter.microPlot,
+            activeChapterCliffhanger: deducedChapter.cliffhangerPoint || '剧情情绪最高潮瞬间',
+            lastChapterText: prevTail,
+          })
+        : buildChapterPrompt({
         title: currentChapter.title,
         summary: currentChapter.summary,
         prevTail,
