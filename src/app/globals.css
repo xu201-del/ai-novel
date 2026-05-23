@@ -186,7 +186,7 @@ html:not(.dark) .glass-modal {
 .writer-prose {
   font-family: var(--font-serif);
   font-size: 15px;
-  line-height: 2.2;
+  line-height: 1.65;
   letter-spacing: 0.04em;
   color: var(--color-text-primary);
   text-align: justify;
@@ -197,6 +197,25 @@ html:not(.dark) .glass-modal {
 .writer-prose p,
 .writer-prose div {
   margin-bottom: 0.6em;
+}
+
+/* ── 组件化布局框架 — 叙述块 / 反转 / 对话 ── */
+.writer-prose section {
+  display: block;
+  margin-bottom: 1em;
+  text-indent: 2em;
+}
+
+.writer-prose div.border-b {
+  display: block;
+  border-bottom: 1px solid var(--color-border-primary);
+  padding-bottom: 0.5em;
+  margin-bottom: 0.8em;
+  font-weight: 500;
+}
+
+.writer-prose span {
+  display: inline;
 }
 
 /* ═══════════════════════════════════════════════════════════
