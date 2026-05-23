@@ -475,14 +475,15 @@ export default function ChapterEditor() {
           }
         : undefined;
 
-      const prompt = deducedChapter && currentVolume
+      const prompt = deducedChapter
         ? buildChapterBodyPrompt({
-            activeVolumeTitle: currentVolume.title,
-            activeVolumeEnding: currentVolume.volumeEnding,
             activeChapterTitle: deducedChapter.chapterTitle,
             activeChapterPlot: deducedChapter.microPlot,
             activeChapterCliffhanger: deducedChapter.cliffhangerPoint || '剧情情绪最高潮瞬间',
             lastChapterText: prevTail,
+            dsTimeDimension: chapterOutline?.uiMetrics?.timeDimension,
+            dsTokenFingerprint: chapterOutline?.uiMetrics?.tokenFingerprint,
+            dsSituationalInference: chapterOutline?.uiMetrics?.situationalInference,
           })
         : buildChapterPrompt({
         title: currentChapter.title,

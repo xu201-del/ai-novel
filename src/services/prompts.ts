@@ -340,30 +340,49 @@ ${prevTail || '（这是第一章，无需衔接）'}
 //  基于篇章裂变引擎的微蓝图，产出极具网文质感的正文章节
 // ═══════════════════════════════════════════════════════════
 export function buildChapterBodyPrompt(params: {
-  activeVolumeTitle: string;
-  activeVolumeEnding: string;
   activeChapterTitle: string;
   activeChapterPlot: string;
   activeChapterCliffhanger: string;
   lastChapterText: string;
+  dsTimeDimension?: string;
+  dsTokenFingerprint?: string;
+  dsSituationalInference?: string;
 }): string {
-  const { activeVolumeTitle, activeVolumeEnding, activeChapterTitle, activeChapterPlot, activeChapterCliffhanger, lastChapterText } = params;
+  const {
+    activeChapterTitle, activeChapterPlot, activeChapterCliffhanger, lastChapterText,
+    dsTimeDimension, dsTokenFingerprint, dsSituationalInference,
+  } = params;
 
-  return `# Role: InkFlow Pro 殿堂级网络小说主笔 (正文并发表绎引擎)
+  const timeDim = dsTimeDimension || '继承上文时态';
+  const tokenFp = dsTokenFingerprint || '纯叙述流';
+  const situInf = dsSituationalInference || '自然推进';
+
+  return `# Role: InkFlow Pro 殿堂级网络小说主笔 (Claude 编程级文字绎引擎)
 
 ## Task
-执行正文高控编织任务。请读取当前章节的大纲线索，结合前文剧情，输出极具网文质感、画面硬度与戏剧张力的网文正文。
+执行正文高控编织任务。你必须接收来自底层 DeepSeek 算力流生成的【模式指标】与【大纲指纹】，输出极具网文质感、画面硬度与戏剧张力的网文正文。
 
-## Executing Constraints
-1. **文风锁死（呼吸感节奏）**：句子要短、要有压迫感。善用单字成行、短句成段（参考：青铜碎片在跳动。/ 像心脏。/ 不是她的血。/ 是他的。）。严禁大段旁白解释。
-2. **大纲对齐度 100%**：正文发展的核心路线必须完美契合 \`${activeChapterPlot}\`。
-3. **断崖死锁（The Deadlock Cut）**：本次生成的最后 100 字，必须强行刹车在 \`${activeChapterCliffhanger}\` 指定的断崖点上。不要解决危机，在冲突最高潮处戛然而止。
+## 🚨 Executing Constraints (文字排序与视觉密度死锁)
+为了配合前端编辑器的排版密度（消除 PPT 散架感），你输出的文字排序必须严格遵守以下工业级网文比例：
 
-## Contextual State Lock
-<macro_framework>
-- 当前篇名: ${activeVolumeTitle}
-- 本篇大结局走向: ${activeVolumeEnding}
-</macro_framework>
+1. **段落内多行文字（Line-Height）要"合"**：
+   - 连续的动作流、环境描写、细节铺垫，必须凝聚在同一个自然段内（不要一句一换行）。
+   - 段内文字保持高内聚，用句号和逗号自然展平，确保在视觉上形成厚实的"剧情块"。
+
+2. **普通段落之间（Paragraph Margin）要"呼"**：
+   - 只有在动作切换、视角转移、或台词对白时才允许换段。
+   - 保证普通段落之间有清晰的呼吸感，但严禁出现高频空行，从源头上杜绝文字支离破碎。
+
+3. **核心反转短句（The Punchline）要"悬"**：
+   - 当剧情推到最高潮、抛出致命底牌或情绪重击时（如：主角发现某种反转），允许使用【单句成段】。
+   - 只有这种极短句才配拥有前后独立的上下留白，在视觉上形成"情绪陷阱"，让读者视线猛然一沉。
+
+## 📊 Ingested DeepSeek Stream (接收自 DS 的模式指标)
+<deepseek_metrics>
+- 时态维度 (Time Dimension): ${timeDim}
+- 语义特征流 (Token Fingerprint): ${tokenFp}
+- 冲突张力 (Situational Inference): ${situInf}
+</deepseek_metrics>
 
 <micro_blueprint>
 - 当前要写的章节: ${activeChapterTitle}
@@ -372,15 +391,15 @@ export function buildChapterBodyPrompt(params: {
 </micro_blueprint>
 
 <historical_text_stream>
-- 前文最后500字剧情承接:
+- 前文最后500字剧情承接 (保持无缝衔接):
 ${lastChapterText || '（这是第一章，无前文）'}
 </historical_text_stream>
 
 ## Output Format Specification
-直接输出排版好的正文小说文本。严禁包含任何"好的，以下是为您生成的正文"等废话，直接以正文第一句开始输出。
+直接输出排版好的正文小说文本。严禁包含任何"好的，以下是为您生成的正文"等废话提示语，严禁在正文外附加任何格式说明，直接以正文第一句开始输出。
 
 ## Execution
-现在开始编织 ${activeChapterTitle} 的正文：`;
+请严格结合上述 DeepSeek 模式指标，开始编织 ${activeChapterTitle} 的高凝聚度正文：`;
 }
 
 // ═══════════════════════════════════════════════════════════
